@@ -1,0 +1,39 @@
+# EnduroSense configuration.
+# Every tunable number in the project lives here so results are reproducible
+# and decisions pending guide review can be changed in one place.
+
+seed: 42
+
+paths:                      # relative to the project root
+  raw: data/raw
+  interim: data/interim
+  processed: data/processed
+  features: data/features
+  splits: data/splits
+  models: models
+  results: results
+
+battery:
+  pack_wh: 99.9             # DJI TB47D: 4.5 Ah x 22.2 V nominal
+  cells: 6
+  reserve_v: 22.6           # rest-voltage reserve (~3.77 V/cell); pending guide confirmation
+
+chains:
+  tol_v: 0.3                # max |start V - previous end V| to treat flights as the same battery
+
+wind:
+  airborne_min_alt_m: 2.0           # above take-off height, counts as airborne
+  stationary_max_ground_speed: 0.5  # m/s; below this the drone is not moving sideways
+  stationary_min_alt_m: 10.0        # clear of ground effect when sampling ambient wind
+
+split:
+  test_frac: 0.2
+  cv_folds: 5
+
+uncertainty:
+  interval: 0.90
+  quantiles: [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50,
+              0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
+
+decision:
+  tau: 0.95                 # approve a mission only if P(success) >= tau; pending guide confirmation

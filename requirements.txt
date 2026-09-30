@@ -1,0 +1,18 @@
+# Pinned to the versions EnduroSense was developed with (Python 3.11).
+# PyTorch is the CUDA 11.8 build; install it first with:
+#   pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cu118
+# (or drop the index URL for the CPU build), then:
+#   pip install -r requirements.txt && pip install -e .
+
+numpy==1.26.4
+pandas==2.1.4
+scipy==1.11.4
+scikit-learn==1.4.2
+xgboost==3.2.0
+torch==2.7.1
+matplotlib==3.8.4
+pyarrow==25.0.1
+PyYAML==6.0.3
+joblib==1.5.3
+streamlit==1.64.0
+pytest==9.1.1
