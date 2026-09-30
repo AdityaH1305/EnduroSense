@@ -36,8 +36,12 @@ Tests marked `data` need the raw dataset and are skipped if it is missing.
 ## Usage
 
 ```bash
-python scripts/01_profile_data.py   # dataset profile -> data/processed/flight_summary.csv
+python scripts/01_profile_data.py   # Phase 0 dataset profile -> data/processed/flight_summary.csv
+python scripts/02_prepare_data.py   # Phase 1 cleaned tables -> data/processed/{samples,flights,chains}.parquet
+python scripts/03_make_split.py     # Phase 1 locked train/test split -> data/splits/split_v1.json (never overwritten)
 ```
+
+Test data is locked: `endurosense.data.split.select(df, "test")` raises unless `final=True`. It is only used in the final evaluation.
 
 Further numbered scripts are added phase by phase. `scripts/run_all.py` will rebuild everything from the raw data.
 
@@ -47,11 +51,14 @@ Further numbered scripts are added phase by phase. `scripts/run_all.py` will reb
 config.yaml          every tunable setting (reserve voltage, tau, seeds, splits, ...)
 src/endurosense/     the Python package
   config.py          config loading, paths, seeding
-  data/              loading, energy, wind, battery chains, per-flight summary
+  data/              loading, cleaning, phases, energy, wind, battery chains, split
+  plots.py           shared figure style
 scripts/             numbered pipeline steps
 tests/               unit and data-regression tests
-docs/                plan, implementation plan, literature notes, phase notes
-data/                raw/ (not versioned), processed/ ...
+docs/                plan, implementation plan, data report, chain review, literature, phase notes
+config/              manual decisions (chain_overrides.yaml)
+results/             generated tables and figures, per phase
+data/                raw/ (not versioned), processed/, splits/
 ```
 
 ## Configuration

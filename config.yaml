@@ -18,8 +18,34 @@ battery:
   cells: 6
   reserve_v: 22.6           # rest-voltage reserve (~3.77 V/cell); pending guide confirmation
 
+cleaning:
+  voltage_bounds_v: [15.0, 26.5]    # physically possible for a 6S LiPo under load / at rest
+  current_bounds_a: [-1.0, 100.0]   # small negatives are sensor offset on the ground
+  spike_window: 5                   # samples in the centred rolling median
+  voltage_spike_v: 0.5              # voltage deviation from the median that is not explained...
+  voltage_spike_current_a: 2.0      # ...by a current change smaller than this => glitch
+  current_spike_a: 8.0              # current deviation from the median with...
+  current_spike_voltage_v: 0.1      # ...no voltage response smaller than this => glitch
+  gap_s: 1.0                        # time step above this is flagged as a recording gap
+
+phases:
+  ground_max_alt_m: 1.5             # below this height above take-off = on the ground
+  ground_max_current_a: 2.0         # motors off => on the ground, even if the altitude reading drifted
+  move_min_ground_speed: 1.5        # m/s; at or above this the drone is travelling (cruise)
+  vertical_min_speed: 0.5           # m/s; |vertical speed| above this = climbing / descending
+  min_duration_s: 1.0               # shorter phase fragments are merged into their neighbour
+  distance_min_ground_speed: 0.5    # m/s; slower GPS movement is treated as position noise
+
 chains:
-  tol_v: 0.3                # max |start V - previous end V| to treat flights as the same battery
+  tol_v: 0.3                # symmetric tolerance used by the Phase 0 profile (01_profile_data.py)
+  # Phase 1 linking uses motors-off rest voltages and an asymmetric window on
+  # jump = this flight's rest start - previous flight's rest end. A resting
+  # battery only recovers voltage, so a clear drop means a different battery.
+  link_window_v: [-0.10, 0.40]
+  confident_window_v: [-0.05, 0.30]   # links outside this (but inside the window) are flagged uncertain
+  sensitivity_windows_v: [[-0.10, 0.30], [-0.10, 0.40], [-0.10, 0.50], [-0.30, 0.30]]
+  near_reserve_margin_v: 0.3        # chain ends within this of reserve_v => usable for Model A labels
+  overrides: config/chain_overrides.yaml
 
 wind:
   airborne_min_alt_m: 2.0           # above take-off height, counts as airborne
@@ -29,6 +55,9 @@ wind:
 split:
   test_frac: 0.2
   cv_folds: 5
+  file: data/splits/split_v1.json
+  force_test_routes: [R6]     # longest route (~840 m): unseen-distance test at final evaluation
+  candidates: 5000            # random group splits scored; the best-balanced one is kept
 
 uncertainty:
   interval: 0.90

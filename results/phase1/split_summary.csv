@@ -1,0 +1,7 @@
+part,cruise_flights,share,chains,near_reserve_chains,speeds,payloads,altitudes,routes
+test,40,0.204,21,12,5,3,4,"R1,R6"
+dev fold 0,32,0.163,15,10,5,3,4,R1
+dev fold 1,31,0.158,15,10,5,4,4,"R1,R5"
+dev fold 2,33,0.168,15,9,5,3,4,"R1,R4"
+dev fold 3,30,0.153,13,9,5,3,4,R1
+dev fold 4,30,0.153,14,9,5,3,4,"R1,R2,R3,R7"

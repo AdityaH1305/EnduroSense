@@ -24,10 +24,22 @@ def height_above_takeoff(flight: pd.DataFrame) -> pd.Series:
     return flight["position_z"] - flight["position_z"].iloc[0]
 
 
-def ambient_wind(flight: pd.DataFrame) -> float:
-    """Mean ambient wind speed (m/s) for one flight, or NaN if never stationary aloft."""
+def _stationary_aloft(flight: pd.DataFrame) -> pd.Series:
     cfg = load_config()["wind"]
-    stationary = (ground_speed(flight) < cfg["stationary_max_ground_speed"]) & (
+    return (ground_speed(flight) < cfg["stationary_max_ground_speed"]) & (
         height_above_takeoff(flight) > cfg["stationary_min_alt_m"]
     )
+
+
+def ambient_wind(flight: pd.DataFrame) -> float:
+    """Mean ambient wind speed (m/s) for one flight, or NaN if never stationary aloft."""
+    stationary = _stationary_aloft(flight)
     return float(flight.loc[stationary, "wind_speed"].mean()) if stationary.any() else np.nan
+
+
+def ambient_wind_stats(flight: pd.DataFrame) -> dict:
+    """Ambient wind mean, spread (gustiness / estimate quality) and sample count."""
+    w = flight.loc[_stationary_aloft(flight), "wind_speed"]
+    return {"ambient_wind": float(w.mean()) if len(w) else np.nan,
+            "ambient_wind_std": float(w.std()) if len(w) > 1 else np.nan,
+            "ambient_wind_n": int(len(w))}

@@ -85,6 +85,8 @@ EnduroSense/
 
 ## Phase 1: Data preparation, validation and locked split (Weeks 1–2)
 
+> **Status: complete (2026-10-01).** The outcome and the decisions that differ from the text below are in `docs/data_report.md` and `docs/phase_notes/phase1_data.md`: vertical speed is positive going up, motors-off current counts as ground, rest voltages are motors-off, chains use an asymmetric link window, 60 near-reserve chains, and R6 is forced into test while R5 stays in development.
+
 **Plain idea:** turn raw sensor rows into a trusted table where every reading knows its flight, phase, energy and battery chain. Then set the test data aside for good.
 
 1. **Load and clean** (`load.py`, `clean.py`):
@@ -94,10 +96,10 @@ EnduroSense/
    - Confirm the current's sign convention.
    - Cache the result to `data/interim/flights.parquet` and write a cleaning report of counts.
 2. **Flight-phase segmentation** (`phases.py`):
-   - Inputs: smoothed height above take-off, vertical velocity (NED frame, so climbing means v_z < 0) and horizontal ground speed.
+   - Inputs: smoothed height above take-off, vertical velocity (positive going up in this dataset, despite the README describing north-east-down) and horizontal ground speed.
    - Rules: ground (below 1.5 m and still), climb, cruise (ground speed above 1.5 m/s), descent, and hover/transition. A 1 s majority filter smooths the labels.
    - Validation: plot 12 random flights, and automatically check that every R-route flight follows ground → climb → cruise → descent → ground. Flag any flight that doesn't.
-3. **Energy and distance** (`energy.py`): per-sample Wh = V·I·Δt (with Δt capped at 0.5 s), cumulative energy per flight and per chain, and haversine distance over airborne cruise samples.
+3. **Energy and distance** (`energy.py`): per-sample Wh = V·I·Δt (integrated across the 10 short recording gaps, not capped, so no energy is lost), cumulative energy per flight and per chain, and haversine distance over airborne cruise samples.
 4. **Wind** (`wind.py`): an ambient estimate per flight from stationary airborne samples (existing method), plus its standard deviation as a quality flag.
 5. **Battery chains** (`chains.py`):
    - Rest voltage for a flight = the next flight's start voltage where available. This fixes the "voltage hasn't recovered after landing" issue.
@@ -106,10 +108,10 @@ EnduroSense/
    - Investigate chain 19 (flight 81).
    - Manual accept/reject decisions go in `config/chain_overrides.yaml` and are recorded in `docs/chain_review.md`.
 6. **Locked split** (`split.py`):
-   - About 20% of chain groups go to `test`, stratified so that about 5 of the 25 near-reserve chains land in test and speed and payload are both covered.
+   - About 20% of chain groups go to `test`, stratified so that about 20% of the near-reserve chains land in test (12 of 60 in the final split) and speed and payload are both covered.
    - The rest go to 5 grouped CV folds.
    - Save `data/splits/split_v1.json` with a content hash. Code refuses to load test rows unless a `--final` flag is given.
-   - The longer-route flights (R5, R6) are tagged for the distance-generalisation test.
+   - Chains containing R6 (the longest route, ≈820 m) are forced into test; R5 (≈505 m) stays in development for the distance check during development.
 
 **Outputs:** `data/processed/samples.parquet` (per reading), `flights.parquet`, `chains.parquet`, and `docs/data_report.md` with figures.
 **Tests:** constant V and I give a known Wh; a synthetic flight gets the correct phases; chains are rebuilt correctly on a toy table; no group appears on both sides of the split.
@@ -156,7 +158,7 @@ EnduroSense/
 - **Models:** Ridge, RF and XGB for each phase target, plus a **physics-hybrid** (XGB trained on the physics model's residual).
   - **LSTM and GRU are not used for Model B**, because its inputs are fixed mission settings rather than a time series. The report states this reasoning; the brief's five-algorithm comparison is carried out on Model A.
 - **Mission-level validation:** rebuild each held-out flight's total energy from its settings and report MAE and MAPE.
-- **Generalisation tests:** leave out one speed, one payload, one altitude, or one flying day. **Distance test:** train with the R5/R6 flights excluded, then predict those longer flights.
+- **Generalisation tests:** leave out one speed, one payload, one altitude, or one flying day. **Distance test (during development):** train with the R5 flights excluded, then predict them. R6 is only predicted at the final evaluation in Phase 7.
 
 **Outputs:** `results/model_b/*`, `models/model_b/` and `docs/phase_notes/model_b.md`.
 **Guide checkpoint 2:** comparison tables for both models.
@@ -202,7 +204,7 @@ EnduroSense/
 - Final results go to `results/final/`, with a git-hash-stamped summary in `docs/results_summary.md`.
 - Check the result against the proposed success criteria:
   - Model A beats both baselines.
-  - Model B's MAPE is about 5% or less, including on R5/R6.
+  - Model B's MAPE is about 5% or less, including on R5 (development) and R6 (final test).
   - 90% interval coverage is between 88% and 92%.
   - The P3 curve is better than P1 and P2.
 - **Guide checkpoint 3:** full results.

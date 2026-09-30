@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from endurosense.data.energy import energy_wh
+from endurosense.data.energy import energy_wh, step_distance_m
 
 
 def test_constant_power_for_one_hour_gives_known_wh():
@@ -20,3 +20,9 @@ def test_uneven_sampling_weights_by_interval():
 
 def test_single_reading_has_no_energy():
     assert energy_wh([0.0], [24.0], [20.0]) == 0.0
+
+
+def test_step_distance_one_millidegree_of_latitude():
+    d = step_distance_m(np.array([-79.78, -79.78]), np.array([40.458, 40.459]))
+    assert d[0] == 0.0
+    assert d[1] == pytest.approx(111.2, abs=0.2)

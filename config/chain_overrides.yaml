@@ -1,0 +1,12 @@
+# Manual battery-chain decisions from the Phase 1 visual review
+# (results/phase1/figures/chains_page*.png, notes in docs/chain_review.md).
+#
+# break_before:      flight ids that must START a new chain even if the voltage matches
+# join_to_previous:  flight ids that must CONTINUE the previous flight's chain
+#
+# Review 2026-10-01: all 68 multi-flight chains show monotonically falling rest
+# voltage with consistent energy use; the 6 uncertain links (flights 4, 6, 17,
+# 119, 213, 224) are physically consistent. No overrides needed.
+
+break_before: []
+join_to_previous: []

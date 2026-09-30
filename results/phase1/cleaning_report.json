@@ -1,0 +1,78 @@
+{
+ "rows": 257896,
+ "flights": 209,
+ "gaps_over_1s": 10,
+ "largest_gap_s": 5.279999999999973,
+ "voltage_glitches_fixed": 22,
+ "current_glitches_fixed": 54,
+ "negative_current_rows": 29031,
+ "min_current_a": -0.326022744178772,
+ "flights_without_gps": [
+  211,
+  212,
+  213,
+  214,
+  215,
+  216,
+  217,
+  218,
+  219
+ ],
+ "rest_end_model": {
+  "a": 4.611387706237762,
+  "b": 0.7975867505460655,
+  "c": -0.035575711313440284
+ },
+ "median_recovery_v": 0.09021053314208771,
+ "rest_start_estimated": [
+  59,
+  60,
+  68,
+  221,
+  222,
+  223,
+  224
+ ],
+ "rest_end_estimated": [
+  81,
+  86,
+  221,
+  250
+ ],
+ "phase_order_problems": [
+  250
+ ],
+ "truncated_landing": [
+  250
+ ],
+ "overrides": {
+  "break_before": [],
+  "join_to_previous": []
+ },
+ "uncertain_links": [
+  [
+   4.0,
+   -0.054
+  ],
+  [
+   6.0,
+   -0.076
+  ],
+  [
+   17.0,
+   0.368
+  ],
+  [
+   119.0,
+   -0.08
+  ],
+  [
+   213.0,
+   -0.091
+  ],
+  [
+   224.0,
+   0.349
+  ]
+ ]
+}
