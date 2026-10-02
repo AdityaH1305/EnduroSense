@@ -24,6 +24,8 @@
   - Data-regression tests reproduce the profiling numbers: 209 flights, 196 cruise flights, 60/60 grid cells with 3–5 flights each, 103 chains, 62 multi-flight chains, 25 near-full-to-reserve chains, mean energy 21.23 Wh, and wind from 1.29 to 6.71 m/s.
 - `python scripts/01_profile_data.py` writes a `data/processed/flight_summary.csv` that is **identical** to the file produced before the refactor (checked with `pandas.testing.assert_frame_equal`).
 
+> **Correction (2026-10-02 verification pass):** the chain numbers above (103 / 62 / 25) came from flights sorted by start time *as text*, which mis-orders 7 days. With true time order and 4 corrected start times, the Phase 0 profile gives **92 chains, 64 multi-flight and 28 full-to-reserve**; the regression test was updated. Phase 1's motors-off method (90 / 71 / 60 near reserve) is what the project uses.
+
 ## Carried into Phase 1
 
 - Typed loading and a parquet cache, and parsing the mixed `altitude` column (e.g. `"25-50-100-25"`).

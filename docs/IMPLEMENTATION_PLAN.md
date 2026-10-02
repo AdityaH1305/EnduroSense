@@ -81,11 +81,11 @@ EnduroSense/
 - Add a short literature-notes file, `docs/literature.md`, covering UAV energy models (Rodrigues 2021/2022, rotor momentum theory), battery remaining-energy estimation and conformal prediction.
 - Copy this plan into the repo as `docs/IMPLEMENTATION_PLAN.md`.
 
-**Done when:** `pytest` passes the smoke tests, and `python scripts/01_profile_data.py` reproduces the known numbers: 60/60 grid cells filled, 62 multi-flight chains, 25 near-full-to-reserve chains.
+**Done when:** `pytest` passes the smoke tests, and `python scripts/01_profile_data.py` reproduces the known numbers: 60/60 grid cells filled, 64 multi-flight chains, 28 near-full-to-reserve chains (corrected 2026-10-02; originally 62/25 because of a time-sorting bug).
 
 ## Phase 1: Data preparation, validation and locked split (Weeks 1–2)
 
-> **Status: complete (2026-10-01).** The outcome and the decisions that differ from the text below are in `docs/data_report.md` and `docs/phase_notes/phase1_data.md`: vertical speed is positive going up, motors-off current counts as ground, rest voltages are motors-off, chains use an asymmetric link window, 60 near-reserve chains, and R6 is forced into test while R5 stays in development.
+> **Status: complete (2026-10-01).** The outcome and the decisions that differ from the text below are in `docs/data_report.md` and `docs/phase_notes/phase1_data.md`: vertical speed is positive going up, motors-off current counts as ground, rest voltages are motors-off, chains use an asymmetric link window, flights are ordered by real timestamps with 4 start times corrected, 71 multi-flight and 60 near-reserve chains, and R6 is forced into test while R5 stays in development. The split is **v2** (`data/splits/split_v2.json`); v1 was invalidated by the ordering fix before any modelling.
 
 **Plain idea:** turn raw sensor rows into a trusted table where every reading knows its flight, phase, energy and battery chain. Then set the test data aside for good.
 
@@ -108,9 +108,9 @@ EnduroSense/
    - Investigate chain 19 (flight 81).
    - Manual accept/reject decisions go in `config/chain_overrides.yaml` and are recorded in `docs/chain_review.md`.
 6. **Locked split** (`split.py`):
-   - About 20% of chain groups go to `test`, stratified so that about 20% of the near-reserve chains land in test (12 of 60 in the final split) and speed and payload are both covered.
+   - About 20% of chain groups go to `test`, stratified so that about 20% of the near-reserve chains land in test (11 of 60 in split v2) and speed and payload are both covered.
    - The rest go to 5 grouped CV folds.
-   - Save `data/splits/split_v1.json` with a content hash. Code refuses to load test rows unless a `--final` flag is given.
+   - Save `data/splits/split_v2.json` with a content hash. Code refuses to load test rows unless a `--final` flag is given.
    - Chains containing R6 (the longest route, ≈820 m) are forced into test; R5 (≈505 m) stays in development for the distance check during development.
 
 **Outputs:** `data/processed/samples.parquet` (per reading), `flights.parquet`, `chains.parquet`, and `docs/data_report.md` with figures.
@@ -244,7 +244,7 @@ EnduroSense/
 ## Verification (end to end)
 
 1. `pip install -r requirements.txt && pip install -e .` then `pytest`. All unit tests pass: energy integration, phases, chains, causal features, split integrity, mission assembly and feasibility maths.
-2. `python scripts/01_profile_data.py` still reproduces the profiling numbers (60/60 cells, 62 chains, 25 near-reserve chains).
+2. `python scripts/01_profile_data.py` still reproduces the profiling numbers (60/60 cells, 64 multi-flight chains, 28 full-to-reserve chains).
 3. `python scripts/run_all.py` rebuilds every processed file, model and CV table from the raw data, with no manual steps. Running it twice gives identical metrics.
 4. Leakage guard: a test asserts that no chain id appears in both train and test, and that test rows can't be loaded without `--final`.
 5. Sanity checks: Model A predictions shrink over each chain; P(success) goes down as mission distance or payload goes up (a monotonicity test); the oracle P4 has zero unsafe approvals.

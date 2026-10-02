@@ -6,7 +6,6 @@ requested in review (e.g. the reserve voltage) is a one-line edit.
 """
 from __future__ import annotations
 
-import os
 import random
 from functools import lru_cache
 from pathlib import Path
@@ -31,11 +30,14 @@ def data_path(key: str) -> Path:
 
 
 def set_seed(seed: int | None = None) -> int:
-    """Seed Python, NumPy and (if installed) PyTorch; returns the seed used."""
+    """Seed Python, NumPy and (if installed) PyTorch; returns the seed used.
+
+    ``PYTHONHASHSEED`` is not set here: it only takes effect when Python starts,
+    and nothing in this project depends on set/dict hash order.
+    """
     seed = load_config()["seed"] if seed is None else seed
     random.seed(seed)
     np.random.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)
     try:
         import torch
 

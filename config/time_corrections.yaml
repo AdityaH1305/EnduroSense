@@ -1,0 +1,18 @@
+# Corrections to flight start times (local_time) in the raw CMU dataset.
+#
+# Found in the Phase 0/1 verification pass (2026-10-02). These four flights are
+# out of order with the flights logged around them; their times look like
+# 12-hour entries in a 24-hour column (22:31, 3:10) or off-by-one-hour typos
+# (10:06, 11:17). Each correction is confirmed by battery-voltage continuity:
+# at the corrected time the flight continues the previous flight's battery
+# (rest-voltage jump of +0.06 to +0.20 V, the normal recovery) or starts on a
+# freshly charged one (jump > +2 V), and the next flight continues it.
+#
+# The raw files are never edited; corrections are applied in code
+# (endurosense.data.clean.correct_start_times) and each `from` value is checked.
+
+corrections:
+  108: {date: "2019-06-24", from: "22:31", to: "10:31", reason: "12-hour entry; continues into 109 (+0.20 V)"}
+  112: {date: "2019-06-24", from: "10:06", to: "11:06", reason: "hour typo; continues 111 (+0.08 V), 113 starts fresh (+3.12 V)"}
+  150: {date: "2019-07-03", from: "3:10",  to: "15:10", reason: "12-hour entry; continues 149 (+0.11 V) into 151 (+0.10 V)"}
+  173: {date: "2019-07-09", from: "11:17", to: "12:17", reason: "hour typo; continues 172 (+0.07 V) into 174 (+0.06 V)"}

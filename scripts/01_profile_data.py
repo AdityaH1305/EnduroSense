@@ -12,6 +12,7 @@ Writes per-flight summary to data/processed/flight_summary.csv.
 import pandas as pd
 
 from endurosense.config import data_path, load_config
+from endurosense.data.clean import chronological
 from endurosense.data.load import load_flights, load_parameters
 from endurosense.data.profile import build_flight_summary
 
@@ -53,7 +54,7 @@ def main() -> None:
     print("== Ambient wind per cruise flight (m/s) ==")
     print(pd.cut(cruise["ambient_wind"], [0, 2, 3, 4, 5, 6, 8, 12]).value_counts(sort=False).to_string(), "\n")
 
-    chains = summary.groupby("battery_chain").agg(
+    chains = chronological(summary).groupby("battery_chain").agg(
         n=("flight", "size"), v0=("v_start", "first"), v1=("v_end", "last"), energy_wh=("energy_wh", "sum"))
     print("== Battery chains (consecutive flights on one battery) ==")
     print(f"chains: {len(chains)}   flights per chain: {chains['n'].value_counts().sort_index().to_dict()}")

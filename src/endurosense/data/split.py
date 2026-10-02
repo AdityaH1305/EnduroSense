@@ -89,9 +89,12 @@ def choose_test_chains(flights: pd.DataFrame, chains: pd.DataFrame, seed: int) -
 
 def assign_folds(dev_chains: pd.DataFrame, flights: pd.DataFrame, k: int, seed: int) -> dict:
     """Greedy balanced grouped folds: near-reserve and other chains are spread
-    separately, each chain going to the fold with the fewest flights so far."""
+    separately, each chain going to the fold with the fewest cruise flights so
+    far (ground/hover test flights are not used for modelling, so they are not
+    counted; ties go to the lowest fold index)."""
     rng = np.random.default_rng(seed)
-    size = flights.groupby("battery_chain").size()
+    cruise = flights[flights["route"].str.startswith("R")]
+    size = cruise.groupby("battery_chain").size().reindex(flights["battery_chain"].unique(), fill_value=0)
     load = np.zeros(k)
     fold = {}
     for stratum in (True, False):
@@ -115,7 +118,7 @@ def make_split(flights: pd.DataFrame, chains: pd.DataFrame, seed: int | None = N
     flight_role = {int(f): (TEST if c in test_chains else DEV)
                    for f, c in zip(flights["flight"], flights["battery_chain"])}
     payload = {
-        "version": "v1",
+        "version": cfg["split"]["version"],
         "created": date.today().isoformat(),
         "seed": seed,
         "rules": {"test_frac": cfg["split"]["test_frac"], "cv_folds": cfg["split"]["cv_folds"],

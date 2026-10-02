@@ -10,7 +10,7 @@ signals:
   a north-east-down frame,
 - horizontal ground speed,
 - battery current: with the motors off (~0 A) the drone must be on the ground.
-  This matters after landing, where the altitude reading drifts up to ~4 m.
+  This matters after landing, where the altitude reading drifts up to ~14 m.
 
 Fragments shorter than ``min_duration_s`` are merged into the preceding phase
 so brief sensor wobbles do not create spurious phase changes.

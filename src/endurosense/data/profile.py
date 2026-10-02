@@ -6,6 +6,7 @@ import pandas as pd
 
 from endurosense.config import load_config
 from endurosense.data.chains import assign_battery_chains
+from endurosense.data.clean import correct_start_times
 from endurosense.data.energy import energy_wh
 from endurosense.data.wind import ambient_wind, ground_speed, height_above_takeoff
 
@@ -41,6 +42,6 @@ def build_flight_summary(flights: pd.DataFrame, params: pd.DataFrame) -> pd.Data
     """One row per flight: planned parameters, summary statistics and battery chain id."""
     rows = [{"flight": fid, **summarise_flight(f.sort_values("time"))}
             for fid, f in flights.groupby("flight", sort=True)]
-    summary = params.merge(pd.DataFrame(rows), on="flight")
+    summary = correct_start_times(params).merge(pd.DataFrame(rows), on="flight")
     summary["battery_chain"] = assign_battery_chains(summary)
     return summary

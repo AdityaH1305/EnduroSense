@@ -22,6 +22,7 @@ import pandas as pd
 import yaml
 
 from endurosense.config import ROOT, load_config
+from endurosense.data.clean import chronological
 
 
 def rest_voltages(flight: pd.DataFrame) -> dict:
@@ -75,7 +76,7 @@ def load_overrides(path: str | Path | None = None) -> dict:
 def link_jumps(summary: pd.DataFrame, start_col: str = "v_rest_start",
                end_col: str = "v_rest_end") -> pd.Series:
     """Voltage jump from the previous same-day flight's end to this flight's start (NaN for a day's first flight)."""
-    s = summary.sort_values(["date", "local_time"])
+    s = chronological(summary)
     jump = s[start_col] - s.groupby("date")[end_col].shift()
     return jump.reindex(summary.index)
 
@@ -87,14 +88,14 @@ def assign_battery_chains(summary: pd.DataFrame, tol_v: float | None = None,
     """Chain id for each flight in a per-flight summary.
 
     ``summary`` needs ``flight``, ``date``, ``local_time`` and the two voltage
-    columns. A flight continues the previous (same-day) flight's chain when the
+    columns; flights are ordered by true start time (see ``chronological``). A flight continues the previous (same-day) flight's chain when the
     voltage jump ``start - previous end`` lies inside ``window = (lo, hi)``, or,
     if no window is given, when ``|jump| <= tol_v``. ``overrides`` may force a
     new chain (``break_before``) or a link (``join_to_previous``) at given
     flight ids.
     """
     overrides = overrides or {}
-    s = summary.sort_values(["date", "local_time"])
+    s = chronological(summary)
     jump = s[start_col] - s[end_col].shift()
     if window is not None:
         linked = jump.between(*window)
@@ -116,7 +117,7 @@ def add_rest_after(summary: pd.DataFrame) -> pd.DataFrame:
     median recovery seen between linked flights. ``rest_after_source`` records
     which was used.
     """
-    s = summary.sort_values(["date", "local_time"]).copy()
+    s = chronological(summary).copy()
     nxt = s.groupby("battery_chain")["v_rest_start"].shift(-1)
     recovery = float((nxt - s["v_rest_end"]).median())
     s["v_rest_after"] = nxt.fillna(s["v_rest_end"] + recovery)
@@ -129,7 +130,7 @@ def chain_table(summary: pd.DataFrame) -> pd.DataFrame:
     cfg = load_config()
     reserve = cfg["battery"]["reserve_v"]
     margin = cfg["chains"]["near_reserve_margin_v"]
-    s = summary.sort_values(["date", "local_time"])
+    s = chronological(summary)
     agg = dict(
         date=("date", "first"),
         flights=("flight", list),

@@ -2,6 +2,7 @@
 import numpy as np
 import pytest
 
+from endurosense.data.clean import chronological
 from endurosense.data.load import load_flights
 from endurosense.data.prepare import build_tables
 
@@ -40,16 +41,28 @@ def test_energy_matches_phase0_profile(tables):
 
 def test_chain_energy_never_decreases(tables):
     samples, _, _, _ = tables
-    s = samples.sort_values(["battery_chain", "date", "local_time", "time"])
+    order = chronological(samples[["flight", "date", "local_time"]].drop_duplicates())["flight"]
+    rank = {f: i for i, f in enumerate(order)}
+    s = samples.assign(_r=samples["flight"].map(rank)).sort_values(["battery_chain", "_r", "time"])
     steps = s.groupby("battery_chain")["cum_chain_energy_wh"].diff().dropna()
     assert (steps >= -0.01).all()        # tiny negatives only from ~0 A ground readings
 
 
 def test_rest_voltage_falls_along_every_chain(tables):
     _, flights, _, _ = tables
-    s = flights.sort_values(["date", "local_time"])
+    s = chronological(flights)
     rises = s.groupby("battery_chain")["v_rest_start"].apply(lambda v: (v.diff() > 0.05).any())
     assert not rises.any()
+
+
+def test_corrected_flights_join_their_neighbours(tables):
+    # with true start times, the mis-logged flights continue the right batteries
+    _, flights, _, _ = tables
+    chain = flights.set_index("flight")["battery_chain"]
+    assert chain[108] == chain[109]
+    assert chain[110] == chain[111] == chain[112]
+    assert chain[149] == chain[150] == chain[151] == chain[152]
+    assert chain[172] == chain[173] == chain[174]
 
 
 def test_flight_81_is_linked_to_82(tables):

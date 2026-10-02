@@ -15,7 +15,7 @@ import pandas as pd
 
 from endurosense.config import load_config
 from endurosense.data import chains as ch
-from endurosense.data.clean import clean_flights
+from endurosense.data.clean import chronological, clean_flights, start_time
 from endurosense.data.energy import add_energy_columns
 from endurosense.data.phases import PHASES, check_phase_order, phase_runs, segment_flight
 from endurosense.data.wind import ambient_wind_stats
@@ -76,6 +76,7 @@ def build_tables(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.Data
         rows.append({"flight": fid, **f[FLIGHT_PARAM_COLS].iloc[0].to_dict(), **summarise(f)})
     flights = pd.DataFrame(rows)
     flights["route"] = flights["route"].astype(str)
+    flights["start_time"] = start_time(flights)
 
     cfg = load_config()["chains"]
     coef = ch.fit_rest_end_model(flights)
@@ -85,13 +86,13 @@ def build_tables(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.Data
         flights, start_col="v_rest_start", end_col="v_rest_end", overrides=overrides,
         window=tuple(cfg["link_window_v"]))
     flights["link_jump_v"] = ch.link_jumps(flights)
-    first_in_chain = ~flights.sort_values(["date", "local_time"])["battery_chain"].duplicated().reindex(flights.index)
+    first_in_chain = ~chronological(flights)["battery_chain"].duplicated().reindex(flights.index)
     flights["link_confident"] = first_in_chain | flights["link_jump_v"].between(*cfg["confident_window_v"])
     flights = ch.add_rest_after(flights)
     chains = ch.chain_table(flights)
 
     # energy drawn from the battery since the start of its chain, per reading
-    prior = (flights.sort_values(["date", "local_time"])
+    prior = (chronological(flights)
              .assign(prior_chain_wh=lambda d: d.groupby("battery_chain")["energy_wh"].cumsum() - d["energy_wh"])
              .set_index("flight")[["battery_chain", "prior_chain_wh"]])
     samples = samples.join(prior, on="flight")

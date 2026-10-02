@@ -4,7 +4,7 @@ Usage: python scripts/03_make_split.py
 
 Never overwrites an existing split: the test set must stay fixed for the whole
 project. If the split already exists it is verified and summarised instead.
-Writes data/splits/split_v1.json and results/phase1/split_summary.csv.
+Writes the split file named in config.yaml (split.file) and results/phase1/split_summary.csv.
 """
 import pandas as pd
 

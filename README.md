@@ -38,7 +38,7 @@ Tests marked `data` need the raw dataset and are skipped if it is missing.
 ```bash
 python scripts/01_profile_data.py   # Phase 0 dataset profile -> data/processed/flight_summary.csv
 python scripts/02_prepare_data.py   # Phase 1 cleaned tables -> data/processed/{samples,flights,chains}.parquet
-python scripts/03_make_split.py     # Phase 1 locked train/test split -> data/splits/split_v1.json (never overwritten)
+python scripts/03_make_split.py     # Phase 1 locked train/test split -> data/splits/split_v2.json (never overwritten)
 ```
 
 Test data is locked: `endurosense.data.split.select(df, "test")` raises unless `final=True`. It is only used in the final evaluation.

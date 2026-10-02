@@ -28,14 +28,14 @@ def test_new_day_always_starts_new_chain():
 
 def test_window_rejects_voltage_drop_between_flights():
     # a resting battery only recovers voltage; a clear drop means a different battery
-    s = pd.DataFrame({"flight": [1, 2, 3], "date": ["d"] * 3, "local_time": ["10:00", "10:10", "10:20"],
+    s = pd.DataFrame({"flight": [1, 2, 3], "date": ["2019-06-01"] * 3, "local_time": ["10:00", "10:10", "10:20"],
                       "v_rest_start": [25.6, 24.6, 23.2], "v_rest_end": [24.5, 23.5, 22.4]})
     ids = assign_battery_chains(s, start_col="v_rest_start", end_col="v_rest_end", window=(-0.10, 0.40))
     assert ids.tolist() == [1, 1, 2]        # +0.10 V links; -0.30 V does not
 
 
 def test_overrides_force_break_and_join():
-    s = _summary([("d", "10:00", 25.6, 24.4), ("d", "10:10", 24.5, 23.3), ("d", "10:20", 25.7, 24.5)])
+    s = _summary([("2019-06-01", "10:00", 25.6, 24.4), ("2019-06-01", "10:10", 24.5, 23.3), ("2019-06-01", "10:20", 25.7, 24.5)])
     s["flight"] = [1, 2, 3]
     assert assign_battery_chains(s, tol_v=0.3, overrides={"break_before": [2]}).tolist() == [1, 2, 3]
     assert assign_battery_chains(s, tol_v=0.3, overrides={"join_to_previous": [3]}).tolist() == [1, 1, 1]

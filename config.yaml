@@ -19,6 +19,7 @@ battery:
   reserve_v: 22.6           # rest-voltage reserve (~3.77 V/cell); pending guide confirmation
 
 cleaning:
+  time_corrections: config/time_corrections.yaml   # documented fixes to 4 mis-logged start times
   voltage_bounds_v: [15.0, 26.5]    # physically possible for a 6S LiPo under load / at rest
   current_bounds_a: [-1.0, 100.0]   # small negatives are sensor offset on the ground
   spike_window: 5                   # samples in the centred rolling median
@@ -55,7 +56,8 @@ wind:
 split:
   test_frac: 0.2
   cv_folds: 5
-  file: data/splits/split_v1.json
+  version: v2               # v1 (2026-10-01) was invalidated by the start-time ordering fix (2026-10-02)
+  file: data/splits/split_v2.json
   force_test_routes: [R6]     # longest route (~840 m): unseen-distance test at final evaluation
   candidates: 5000            # random group splits scored; the best-balanced one is kept
 

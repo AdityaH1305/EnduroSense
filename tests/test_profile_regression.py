@@ -22,11 +22,16 @@ def test_design_grid_is_complete(flight_summary):
 
 
 def test_battery_chains(flight_summary):
-    chains = flight_summary.groupby("battery_chain").agg(
+    # Phase 0's quick chain profile (first/last-10-reading voltages, symmetric 0.3 V),
+    # after the 2026-10-02 fix to chronological ordering and start-time corrections.
+    # The chains used for modelling are Phase 1's (motors-off rest voltages); see test_prepare.py.
+    from endurosense.data.clean import chronological
+    s = chronological(flight_summary)
+    chains = s.groupby("battery_chain").agg(
         n=("flight", "size"), v0=("v_start", "first"), v1=("v_end", "last"))
-    assert len(chains) == 103
-    assert (chains["n"] >= 2).sum() == 62
-    assert ((chains["v0"] >= 25.0) & (chains["v1"] <= 22.6)).sum() == 25
+    assert len(chains) == 92
+    assert (chains["n"] >= 2).sum() == 64
+    assert ((chains["v0"] >= 25.0) & (chains["v1"] <= 22.6)).sum() == 28
 
 
 def test_energy_and_wind_ranges(flight_summary):

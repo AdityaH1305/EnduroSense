@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from endurosense.config import ROOT, load_config, set_seed
+from endurosense.data.clean import chronological
 from endurosense.data.load import load_flights, save_processed
 from endurosense.data.prepare import build_tables
 from endurosense.plots import INK_MUTED, PHASE_COLORS, SERIES, apply_style, plt, save
@@ -51,7 +52,7 @@ def plot_chain_pages(samples: pd.DataFrame, flights: pd.DataFrame, chains: pd.Da
         for ax, (_, c) in zip(axes.flat, sub.iterrows()):
             s = samples[samples["battery_chain"] == c["battery_chain"]]
             ax.plot(s["cum_chain_energy_wh"], s["battery_voltage"], color=GRAY_LINE, lw=0.5)
-            fl = flights[flights["battery_chain"] == c["battery_chain"]].sort_values(["date", "local_time"])
+            fl = chronological(flights[flights["battery_chain"] == c["battery_chain"]])
             e0 = np.r_[0, fl["energy_wh"].cumsum().to_numpy()[:-1]]
             ax.scatter(e0, fl["v_rest_start"], s=14, color=SERIES[0], zorder=3)
             ax.scatter(e0[-1] + fl["energy_wh"].iloc[-1], fl["v_rest_after"].iloc[-1], s=14,
@@ -75,7 +76,7 @@ def plot_chain_pages(samples: pd.DataFrame, flights: pd.DataFrame, chains: pd.Da
 def plot_discharge_curve(flights: pd.DataFrame) -> None:
     reserve = load_config()["battery"]["reserve_v"]
     fig, ax = plt.subplots(figsize=(6.5, 3.6))
-    for _, fl in flights.sort_values(["date", "local_time"]).groupby("battery_chain"):
+    for _, fl in chronological(flights).groupby("battery_chain"):
         if len(fl) < 2:
             continue
         e = np.r_[0, fl["energy_wh"].cumsum().to_numpy()]
@@ -99,7 +100,7 @@ def main() -> None:
 
     OUT.mkdir(parents=True, exist_ok=True)
     report["sensitivity"].to_csv(OUT / "chain_sensitivity.csv", index=False)
-    links = flights.sort_values(["date", "local_time"])[
+    links = chronological(flights)[
         ["flight", "date", "local_time", "battery_chain", "v_rest_start", "v_rest_end", "link_jump_v",
          "link_confident", "v_rest_start_estimated", "v_rest_end_estimated"]]
     links.to_csv(OUT / "chain_links.csv", index=False)
