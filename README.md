@@ -39,6 +39,7 @@ Tests marked `data` need the raw dataset and are skipped if it is missing.
 python scripts/01_profile_data.py   # Phase 0 dataset profile -> data/processed/flight_summary.csv
 python scripts/02_prepare_data.py   # Phase 1 cleaned tables -> data/processed/{samples,flights,chains}.parquet
 python scripts/03_make_split.py     # Phase 1 locked train/test split -> data/splits/split_v2.json (never overwritten)
+python scripts/04_build_features.py # Phase 2 Model A labels/features + Model B leg & flight targets -> data/features/
 ```
 
 Test data is locked: `endurosense.data.split.select(df, "test")` raises unless `final=True`. It is only used in the final evaluation.
@@ -52,6 +53,8 @@ config.yaml          every tunable setting (reserve voltage, tau, seeds, splits,
 src/endurosense/     the Python package
   config.py          config loading, paths, seeding
   data/              loading, cleaning, phases, energy, wind, battery chains, split
+  features/          Model A labels & causal features, Model B leg/flight targets
+  mission.py         MissionSpec and phase-based mission energy assembly
   plots.py           shared figure style
 scripts/             numbered pipeline steps
 tests/               unit and data-regression tests

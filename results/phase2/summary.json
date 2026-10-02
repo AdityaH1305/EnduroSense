@@ -1,0 +1,72 @@
+{
+ "discharge_curve": {
+  "a": -0.348359060178055,
+  "b": 0.01668704178000842,
+  "clip": [
+   0.025,
+   0.055
+  ],
+  "slope_at_22.6V": 0.028768084050135256,
+  "slope_at_24V": 0.052129942542147034
+ },
+ "recovery_v_dev": 0.09089899063110352,
+ "chain_labels": {
+  "measured": 31,
+  "none": 30,
+  "extrapolated": 29
+ },
+ "extrapolated_wh": {
+  "count": 29.0,
+  "mean": 5.12,
+  "std": 3.05,
+  "min": 0.02,
+  "25%": 2.11,
+  "50%": 4.96,
+  "75%": 7.89,
+  "max": 9.57
+ },
+ "model_a_rows": 29592,
+ "model_a_chains": 60,
+ "model_a_flights": 157,
+ "remaining_wh": {
+  "count": 29592.0,
+  "mean": 28.97,
+  "std": 20.07,
+  "min": -16.05,
+  "25%": 12.91,
+  "50%": 27.96,
+  "75%": 44.36,
+  "max": 77.25
+ },
+ "remaining_min": {
+  "count": 29592.0,
+  "mean": 3.36,
+  "std": 2.32,
+  "min": -2.0,
+  "25%": 1.5,
+  "50%": 3.24,
+  "75%": 5.16,
+  "max": 8.8
+ },
+ "feature_nan_share": {
+  "v_std_10s": 0.0053,
+  "v_slope_10s": 0.0053,
+  "i_std_10s": 0.0053,
+  "v_std_30s": 0.0053,
+  "v_slope_30s": 0.0053,
+  "i_std_30s": 0.0053,
+  "r_int_30s": 0.1114,
+  "sag_v": 0.0154,
+  "v_rest_flight_start": 0.0154,
+  "v_rest_chain_start": 0.0309
+ },
+ "model_b_flights": 193,
+ "model_b_legs": 587,
+ "legs_per_flight": {
+  "2": 3,
+  "3": 181,
+  "4": 7,
+  "5": 2
+ },
+ "breakdown_max_abs_error_wh": 7.105427357601002e-15
+}

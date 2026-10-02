@@ -61,6 +61,23 @@ split:
   force_test_routes: [R6]     # longest route (~840 m): unseen-distance test at final evaluation
   candidates: 5000            # random group splits scored; the best-balanced one is kept
 
+model_a:
+  sample_hz: 1                      # training rows per second of flight (readings are ~8 Hz)
+  windows_s: [10, 30]               # causal rolling-feature windows (look back only)
+  r_int_window_s: 30                # window for the internal-resistance estimate
+  r_int_min_current_var: 1.0        # A^2; less current variation than this => resistance not estimable
+  r_int_clip_ohm: [0.0, 0.5]
+  slope_fit_band_v: [22.4, 24.0]    # discharge slope dV/dE is fitted as a + b*V on dev-chain segments in this band
+  slope_clip_v_per_wh: [0.025, 0.055]  # measured range of the slope; keeps the fitted line physical outside the band
+  slope_min_segment_wh: 5.0         # rest-point pairs closer than this are too noisy for slope fitting
+  seq_hz: 2                         # sequence-model input rate
+  seq_len: 120                      # 60 s of history at 2 Hz
+
+model_b:
+  min_leg_s: 3.0                    # cruise runs shorter than this are fragments, not legs
+  max_speed_ratio: 1.05             # legs flown faster than this x commanded (repositioning) are flagged, not trained on
+  exclude_varying_altitude: true    # 2 flights climb during cruise; their climb/descent targets are not comparable
+
 uncertainty:
   interval: 0.90
   quantiles: [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50,

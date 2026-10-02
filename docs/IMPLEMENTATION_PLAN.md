@@ -119,6 +119,8 @@ EnduroSense/
 
 ## Phase 2: Labels and features (Weeks 2–3)
 
+> **Status: complete (2026-10-02).** See `docs/phase_notes/phase2_features.md`. Changes from the text below: labels follow a fitted discharge curve (not a straight line or one pooled slope); pre-flight rest voltage is a running value and phase labels aren't Model A features (strict causality); Model B is built **per leg** (587 legs), with leg time = distance ÷ speed + a learned per-leg overhead; repositioning legs are flagged. Phase 3 must use a *fair* energy-counting baseline that knows the starting charge from the rest voltage.
+
 **Model A: energy available** (`features/model_a.py`)
 - **Label:** for chains whose rest voltage reaches 22.6 V, find the point where the reserve is crossed by interpolating in energy between the rest-voltage points on either side. That gives `E_to_reserve` for the chain.
   - Chains that end within 0.3 V above the reserve are extrapolated using the pooled voltage-to-energy slope from the training chains.
