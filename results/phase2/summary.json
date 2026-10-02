@@ -10,55 +10,62 @@
   "slope_at_24V": 0.052129942542147034
  },
  "recovery_v_dev": 0.09089899063110352,
- "chain_labels": {
+ "chain_labels_all": {
   "measured": 31,
   "none": 30,
   "extrapolated": 29
  },
- "extrapolated_wh": {
-  "count": 29.0,
-  "mean": 5.12,
-  "std": 3.05,
+ "chain_labels_dev": {
+  "measured": 26,
+  "none": 25,
+  "extrapolated": 23
+ },
+ "extrapolated_wh_dev": {
+  "count": 23.0,
+  "mean": 5.07,
+  "std": 3.04,
   "min": 0.02,
-  "25%": 2.11,
+  "25%": 2.23,
   "50%": 4.96,
-  "75%": 7.89,
+  "75%": 7.88,
   "max": 9.57
  },
  "model_a_rows": 29592,
  "model_a_chains": 60,
  "model_a_flights": 157,
- "remaining_wh": {
-  "count": 29592.0,
-  "mean": 28.97,
-  "std": 20.07,
+ "model_a_rows_dev": 23884,
+ "model_a_chains_dev": 49,
+ "remaining_wh_dev": {
+  "count": 23884.0,
+  "mean": 28.73,
+  "std": 20.25,
   "min": -16.05,
-  "25%": 12.91,
-  "50%": 27.96,
-  "75%": 44.36,
+  "25%": 12.34,
+  "50%": 27.43,
+  "75%": 44.53,
   "max": 77.25
  },
- "remaining_min": {
-  "count": 29592.0,
-  "mean": 3.36,
-  "std": 2.32,
+ "remaining_min_dev": {
+  "count": 23884.0,
+  "mean": 3.35,
+  "std": 2.35,
   "min": -2.0,
-  "25%": 1.5,
-  "50%": 3.24,
-  "75%": 5.16,
+  "25%": 1.47,
+  "50%": 3.19,
+  "75%": 5.19,
   "max": 8.8
  },
- "feature_nan_share": {
+ "feature_nan_share_dev": {
   "v_std_10s": 0.0053,
   "v_slope_10s": 0.0053,
   "i_std_10s": 0.0053,
   "v_std_30s": 0.0053,
   "v_slope_30s": 0.0053,
   "i_std_30s": 0.0053,
-  "r_int_30s": 0.1114,
-  "sag_v": 0.0154,
-  "v_rest_flight_start": 0.0154,
-  "v_rest_chain_start": 0.0309
+  "r_int_30s": 0.1143,
+  "sag_v": 0.0191,
+  "v_rest_flight_start": 0.0191,
+  "v_rest_chain_start": 0.0383
  },
  "model_b_flights": 193,
  "model_b_legs": 587,

@@ -14,7 +14,7 @@
 - **Refactor.** Moved `summarise_flight()` and `assign_battery_chains()` out of `scripts/01_profile_data.py` into the package. The script is now a thin wrapper around it.
 - **Settings.** `config.yaml` holds every tunable setting, including the defaults waiting on guide review (reserve 22.6 V, τ = 0.95). Thresholds that used to be hard-coded (the wind-sampling limits, the chain tolerance and the battery capacity) now live there too.
 - **Environment.** `requirements.txt` is pinned to the installed versions. Streamlit 1.64.0 was added; a dry run confirmed it didn't change any existing package.
-- **Project files.** Added `pyproject.toml`, `.gitignore` (raw data, interim data, features and models are not versioned) and `README.md`.
+- **Project files.** Added `pyproject.toml`, `.gitignore` (raw data, features and models are not versioned) and `README.md`.
 - **Docs.** `docs/IMPLEMENTATION_PLAN.md` is a copy of the approved phase plan; `docs/literature.md` holds the starter literature notes.
 
 ## Verification

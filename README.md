@@ -61,7 +61,7 @@ src/endurosense/     the Python package
   plots.py           shared figure style
 scripts/             numbered pipeline steps
 tests/               unit and data-regression tests
-docs/                plan, implementation plan, data report, chain review, literature, phase notes
+docs/                plan, implementation plan, data report, chain review, verification log, literature, phase notes
 config/              manual decisions (chain_overrides.yaml)
 results/             generated tables and figures, per phase
 data/                raw/ (not versioned), processed/, splits/

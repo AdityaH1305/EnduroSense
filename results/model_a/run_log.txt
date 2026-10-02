@@ -1,4 +1,5 @@
 dev rows 23,884, chains 49
+cache fingerprint 576576a122
 baselines
   Fixed capacity (reference)   13.561 +/- 0.441  {'baseline': 'FixedCapacity'}
   Energy counting (BMS)        4.494 +/- 0.951  {'baseline': 'EnergyCounting'}
@@ -72,13 +73,13 @@ gru
 physics-informed
   XGBoost + physics            3.042 +/- 0.427  {'n_estimators': 400, 'max_depth': 3, 'learning_rate': 0.02, 'subsample': 0.6, 'colsample_bytree': 1.0, 'min_child_weight': 20, 'reg_lambda': 10.0}
 
-                     model          kind  cv_mae  cv_mae_std  oof_mae  oof_rmse  oof_r2  oof_bias  minutes_mae  latency_ms  size_mb
-                       GRU           gru   2.606       0.369    2.616     3.884   0.963     0.224        0.868       5.378    0.183
-                      LSTM          lstm   2.645       0.532    2.658     4.003   0.961    -0.008        0.869      11.641    0.234
-             Random Forest random_forest   3.018       0.232    3.021     4.417   0.952     0.138        0.904      27.614   14.808
-         Linear Regression        linear   3.024       0.606    3.030     4.530   0.950    -0.072        0.900       0.736    0.003
-         XGBoost + physics   physics_xgb   3.042       0.427    3.052     4.786   0.944    -0.187        0.897       3.903    0.540
-            Voltage lookup      baseline   3.220       0.657    3.236     4.999   0.939    -0.089        0.907       0.422    0.069
-                   XGBoost       xgboost   3.257       0.282    3.263     4.672   0.947    -0.180        0.916       1.889    0.469
-     Energy counting (BMS)      baseline   4.494       0.951    4.513     6.205   0.906    -0.373        1.024       0.252    0.069
-Fixed capacity (reference)      baseline  13.561       0.441   13.556    15.432   0.419    -6.328        1.846       0.003    0.069
+                     model          kind  cv_mae  cv_mae_std  oof_mae  oof_rmse  oof_r2  oof_bias  minutes_mae  latency_ms  size_mb  vs_lookup_diff  vs_lookup_ci_low  vs_lookup_ci_high  chains_better_share  folds_better
+                       GRU           gru   2.606       0.369    2.616     3.884   0.963     0.224        0.869      16.208    0.183          -0.620            -1.135             -0.153                0.592           4.0
+                      LSTM          lstm   2.645       0.532    2.658     4.003   0.961    -0.008        0.870       3.681    0.234          -0.578            -1.180             -0.023                0.612           4.0
+             Random Forest random_forest   3.018       0.232    3.021     4.417   0.952     0.138        0.905      19.862   14.808          -0.216            -0.704              0.242                0.469           3.0
+         Linear Regression        linear   3.024       0.606    3.030     4.530   0.950    -0.072        0.901       3.098    0.003          -0.206            -0.767              0.324                0.571           2.0
+         XGBoost + physics   physics_xgb   3.042       0.427    3.052     4.786   0.944    -0.187        0.897       6.501    0.471          -0.185            -0.674              0.352                0.469           3.0
+            Voltage lookup      baseline   3.220       0.657    3.236     4.999   0.939    -0.089        0.908       1.918    0.000           0.000             0.000              0.000                0.000           0.0
+                   XGBoost       xgboost   3.257       0.282    3.263     4.672   0.947    -0.180        0.917       3.852    0.469           0.027            -0.541              0.579                0.469           3.0
+     Energy counting (BMS)      baseline   4.494       0.951    4.513     6.205   0.906    -0.373        1.025       0.921    0.000           1.277             0.891              1.677                0.122           0.0
+Fixed capacity (reference)      baseline  13.561       0.441   13.556    15.432   0.419    -6.328        1.845       0.008    0.000          10.319             8.347             12.108                0.122           0.0

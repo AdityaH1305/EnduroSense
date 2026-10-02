@@ -19,10 +19,11 @@
   | Extrapolating up to 0.6 V | −0.6 Wh | 2.2 Wh | 18 cases |
 
   Labels themselves therefore carry about **1.5–2.2 Wh** of noise. No model can be judged more accurate than that.
-- **Coverage:** 60 labelled chains (31 measured, 29 extrapolated by 4.7 Wh on average, 9 Wh at most); 49 are in development.
-- **Rows:** 29,592, one per second of flight, from 157 flights. `remaining_wh` ranges from −16 to 78 Wh (negative after the reserve is passed).
+- **Coverage:** 60 of the 90 chains can be labelled (31 measured, 29 extrapolated); 49 of them are in development (26 measured, 23 extrapolated by 5.1 Wh on average, 9.6 Wh at most).
+- **Rows:** 29,592, one per second of flight, from 157 flights (23,884 rows in development). In development, `remaining_wh` ranges from −16 to 77 Wh (negative after the reserve is passed).
 - **The brief's output** is also built as a label: `remaining_min`, the motors-on minutes until the reserve, following the battery's actual future use.
-- **Finding:** full batteries deliver **64.7 ± 7.2 Wh** before the reserve (range 47–78 Wh). This variation between batteries is what Model A has to learn.
+- **Finding:** in development, the 35 batteries that start full deliver **64.7 ± 7.3 Wh** before the reserve (range 47–77 Wh). This variation between batteries is what Model A has to learn.
+- **Rule:** every statistic and figure about label values in these notes and in `results/phase2/` describes development data only. The test set's labels exist in `data/features/` for Phase 7 but are never summarised (fixed in the 2026-10-02 verification pass).
 
 ### Features: 25, all causal
 

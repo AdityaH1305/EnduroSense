@@ -17,6 +17,28 @@ def test_metrics_on_known_values():
     assert m["r2"] == pytest.approx(1 - 2 / 8)
 
 
+def test_paired_comparison_detects_a_better_model_and_a_tie():
+    from endurosense.evaluate import paired_comparison
+    rng = np.random.default_rng(0)
+    y = rng.normal(size=600)
+    groups = np.repeat(np.arange(30), 20)
+    good, bad = y + rng.normal(0, 0.5, 600), y + rng.normal(0, 2.0, 600)
+    c = paired_comparison(y, good, bad, groups)
+    assert c["mae_diff"] < 0 and c["ci_high"] < 0          # clearly better: CI excludes zero
+    tie = paired_comparison(y, good, good, groups)
+    assert tie["mae_diff"] == 0 and tie["ci_low"] == 0 == tie["ci_high"]
+
+
+def test_single_threaded_sets_inner_estimators():
+    from endurosense.evaluate import single_threaded
+    m = single_threaded(T.random_forest(n_estimators=5))
+    assert m.pipe[-1].n_jobs == 1
+    phys = type("P", (), {})()
+    phys.model = T.xgboost(n_estimators=5)
+    single_threaded(phys)
+    assert phys.model.pipe[-1].n_jobs == 1
+
+
 def test_search_configs_are_distinct_valid_and_reproducible():
     a = T.sample_configs("xgboost", 30, seed=42)
     assert a == T.sample_configs("xgboost", 30, seed=42)

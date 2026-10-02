@@ -144,7 +144,7 @@ def chain_table(summary: pd.DataFrame) -> pd.DataFrame:
     t = s.groupby("battery_chain").agg(**agg)
     t["reaches_reserve"] = t["v_rest_last"] <= reserve
     t["near_reserve"] = t["v_rest_last"] <= reserve + margin
-    t["starts_full"] = t["v_rest_first"] >= 25.0
+    t["starts_full"] = t["v_rest_first"] >= cfg["battery"]["full_rest_v"]
     return t.reset_index()
 
 

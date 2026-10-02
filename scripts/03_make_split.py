@@ -8,7 +8,7 @@ Writes the split file named in config.yaml (split.file) and results/phase1/split
 """
 import pandas as pd
 
-from endurosense.config import ROOT
+from endurosense.config import data_path
 from endurosense.data.load import load_processed
 from endurosense.data.split import DEV, TEST, split_path, check_consistency, load_split, make_split, save_split
 
@@ -39,7 +39,7 @@ def main() -> None:
                      "speeds": g["speed"].nunique(), "payloads": g["payload"].nunique(),
                      "altitudes": g["alt_cruise_m"].nunique(), "routes": ",".join(sorted(g["route"].unique()))})
     summary = pd.DataFrame(rows)
-    out = ROOT / "results" / "phase1"
+    out = data_path("results") / "phase1"
     out.mkdir(parents=True, exist_ok=True)
     summary.to_csv(out / "split_summary.csv", index=False)
     print(summary.to_string(index=False))

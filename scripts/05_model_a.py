@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from endurosense.config import ROOT, data_path, load_config, set_seed
+from endurosense.config import data_path, load_config, ROOT, set_seed
 from endurosense.data.load import load_processed
 from endurosense.data.split import DEV, select
 from endurosense.evaluate import cross_validate, latency_ms, metrics, paired_comparison, single_threaded, size_mb
@@ -32,18 +32,34 @@ from endurosense.models.baselines import EnergyCounting, FixedCapacity, VoltageL
 from endurosense.models.sequence import SequenceModel, WindowStore
 from endurosense.plots import INK_MUTED, SERIES, apply_style, plt, save
 
-OUT = ROOT / "results" / "model_a"
+OUT = data_path("results") / "model_a"
 CACHE = OUT / "cache"
-MODELS = ROOT / "models" / "model_a"
+MODELS = data_path("models") / "model_a"
 
 
-def _key(kind: str, cfg: dict) -> str:
-    return f"{kind}_" + hashlib.md5(json.dumps(cfg, sort_keys=True, default=str).encode()).hexdigest()[:10]
+def fingerprint(dev: pd.DataFrame) -> str:
+    """Identifies everything a cached CV result depends on: the development data
+    itself, the locked split, the relevant config sections and the model/feature
+    source code. Any change gives a new fingerprint, so stale results are never reused."""
+    cfg = load_config()
+    h = hashlib.md5()
+    h.update(pd.util.hash_pandas_object(dev, index=True).values.tobytes())
+    h.update((ROOT / cfg["split"]["file"]).read_bytes())
+    h.update(json.dumps({k: cfg[k] for k in ("seed", "battery", "model_a", "model_a_training")},
+                        sort_keys=True).encode())
+    src = ROOT / "src" / "endurosense"
+    for p in sorted(list((src / "models").glob("*.py")) + [src / "features" / "model_a.py", src / "evaluate.py"]):
+        h.update(p.read_bytes())
+    return h.hexdigest()[:10]
 
 
-def run_cv(kind: str, cfg: dict, factory, dev: pd.DataFrame, target: str):
-    """Cross-validate one configuration, with an on-disk cache."""
-    path = CACHE / f"{_key(kind, cfg)}.parquet"
+def _key(kind: str, cfg: dict, fp: str) -> str:
+    return f"{kind}_{fp}_" + hashlib.md5(json.dumps(cfg, sort_keys=True, default=str).encode()).hexdigest()[:10]
+
+
+def run_cv(kind: str, cfg: dict, factory, dev: pd.DataFrame, target: str, fp: str):
+    """Cross-validate one configuration, with an on-disk cache keyed by ``fingerprint``."""
+    path = CACHE / f"{_key(kind, cfg, fp)}.parquet"
     side = path.with_suffix(".json")
     if path.exists() and side.exists():
         return pd.read_parquet(path)["oof"], json.loads(side.read_text())
@@ -53,9 +69,40 @@ def run_cv(kind: str, cfg: dict, factory, dev: pd.DataFrame, target: str):
     return oof, fold_mae
 
 
-def minutes_from_wh(pred_wh: np.ndarray, df: pd.DataFrame, fallback_w: float) -> np.ndarray:
+def robust_latency_ms(predict, one_row: pd.DataFrame, repeats: int, rounds: int = 5) -> float:
+    """Single-row prediction time: the *minimum* of several rounds' medians.
+
+    One timing pass is easily inflated by other work on the machine (a first
+    run measured every model 2-4x slower while other scripts ran). The minimum
+    over rounds estimates the model's own cost. Run this script on a quiet machine.
+    """
+    return min(latency_ms(predict, one_row, max(1, repeats // rounds)) for _ in range(rounds))
+
+
+def measurement_conditions() -> dict:
+    """Machine state during timing. Laptops slow the CPU on battery: measured
+    latencies were ~3-4x higher unplugged, so timings are only comparable within
+    one run and the power state is recorded with them."""
+    import datetime
+    import os
+
+    out = {"measured_at": datetime.datetime.now().isoformat(timespec="seconds"),
+           "cpu_count": os.cpu_count(), "torch_threads": torch.get_num_threads()}
+    try:
+        import psutil
+
+        bat = psutil.sensors_battery()
+        out["power_plugged"] = None if bat is None else bool(bat.power_plugged)
+        out["battery_percent"] = None if bat is None else bat.percent
+    except ImportError:
+        out["power_plugged"] = "unknown (psutil not installed)"
+    return out
+
+
+def minutes_from_wh(pred_wh: np.ndarray, df: pd.DataFrame, fallback_w) -> np.ndarray:
     """The brief's output: remaining minutes = remaining Wh / power. Power is the
-    last 30 s average while flying, else a typical flight power."""
+    last 30 s average while flying, else a typical flight power (``fallback_w``,
+    a number or one value per row)."""
     p = df["p_mean_30s"].to_numpy()
     p = np.where((df["motors_on"].to_numpy() == 1) & (p >= 100), p, fallback_w)
     return pred_wh / p * 60.0
@@ -77,9 +124,11 @@ def main() -> None:
     print(f"dev rows {len(dev):,}, chains {dev['battery_chain'].nunique()}", flush=True)
 
     log, best = [], {}
+    fp = fingerprint(dev)
+    print(f"cache fingerprint {fp}", flush=True)
 
     def consider(kind, name, cfg_, factory):
-        oof, fm = run_cv(kind, cfg_, factory, dev, target)
+        oof, fm = run_cv(kind, cfg_, factory, dev, target, fp)
         row = {"kind": kind, "model": name, "config": json.dumps(cfg_, default=str),
                "cv_mae_mean": float(np.mean(fm)), "cv_mae_std": float(np.std(fm)), "fold_mae": json.dumps(fm)}
         log.append(row)
@@ -115,10 +164,14 @@ def main() -> None:
     pd.DataFrame(log).to_csv(OUT / "search_log.csv", index=False)
 
     # ---------------------------------------------------------- final summary
-    air_w = float(dev.loc[dev["motors_on"] == 1, "p"].median())
     oof_tab = dev[["flight", "battery_chain", "time", "phase", target, "remaining_min", "label_source"]].copy()
     fold_of = dev["flight"].astype(str).map(json.loads((ROOT / cfg["split"]["file"]).read_text())["dev_fold"])
     oof_tab["fold"] = fold_of.to_numpy()
+    # typical flying power for the minutes conversion, from each fold's *training* folds only
+    air_w = np.empty(len(dev))
+    for k in np.unique(oof_tab["fold"]):
+        trn = (oof_tab["fold"] != k).to_numpy() & (dev["motors_on"] == 1).to_numpy()
+        air_w[(oof_tab["fold"] == k).to_numpy()] = float(np.median(dev["p"].to_numpy()[trn]))
     rows, configs = [], {}
     one_row = dev.iloc[[len(dev) // 2]]
     for name, b in best.items():
@@ -132,7 +185,7 @@ def main() -> None:
             final.device = "cpu"
         single_threaded(final)
         torch.set_num_threads(1)
-        lat = latency_ms(final.predict, one_row, tcfg["latency_repeats"] if b["kind"] not in ("lstm", "gru") else 200)
+        lat = robust_latency_ms(final.predict, one_row, tcfg["latency_repeats"] if b["kind"] not in ("lstm", "gru") else 200)
         rows.append({"model": name, "kind": b["kind"], "cv_mae": b["cv_mae_mean"], "cv_mae_std": b["cv_mae_std"],
                      "oof_mae": m["mae"], "oof_rmse": m["rmse"], "oof_r2": m["r2"], "oof_bias": m["bias"],
                      "minutes_mae": float(np.mean(np.abs(mins - dev["remaining_min"].to_numpy()))),
@@ -146,6 +199,7 @@ def main() -> None:
             with open(MODELS / f"{name.replace(' ', '_').replace('+', 'plus').replace('(', '').replace(')', '')}.pkl", "wb") as fh:
                 pickle.dump(final, fh)
     table = pd.DataFrame(rows).sort_values("cv_mae").reset_index(drop=True)
+    (OUT / "latency_conditions.json").write_text(json.dumps(measurement_conditions(), indent=1))
     # is each model really better than the strongest non-ML baseline?
     ref = "Voltage lookup"
     for i, r in table.iterrows():
@@ -173,6 +227,20 @@ def error_analysis(oof: pd.DataFrame, table: pd.DataFrame, target: str) -> None:
     by_phase.to_csv(OUT / "error_by_phase.csv")
     by_chain = (oof[ml] - oof[target]).abs().groupby(oof["battery_chain"]).mean().sort_values(ascending=False)
     by_chain.to_csv(OUT / "error_by_chain.csv", header=["mae"])
+    # error when the battery's pre-flight rest voltage is known vs not (3 chains' recordings
+    # start with the motors running, so it is unknown there)
+    feats = pd.read_parquet(data_path("features") / "model_a.parquet").loc[oof.index]
+    known = (feats["v_rest_flight_start"].notna() & feats["v_rest_chain_start"].notna()).to_numpy()
+    models = table["model"].tolist()
+    pd.DataFrame({"all_rows": [(oof[m] - oof[target]).abs().mean() for m in models],
+                  "known_preflight_voltage": [(oof[m] - oof[target])[known].abs().mean() for m in models],
+                  "unknown_preflight_voltage": [(oof[m] - oof[target])[~known].abs().mean() for m in models]},
+                 index=models).to_csv(OUT / "mae_known_rest_voltage.csv", index_label="model")
+    below = (oof[target] <= 0).to_numpy()
+    pd.DataFrame({"bias_below_reserve": [(oof[m] - oof[target])[below].mean() for m in models],
+                  "mae_below_reserve": [(oof[m] - oof[target])[below].abs().mean() for m in models],
+                  "share_overpredict_5wh": [((oof[m] - oof[target]) > 5).mean() for m in models]},
+                 index=models).to_csv(OUT / "safety_errors.csv", index_label="model")
 
     # figure 1: MAE comparison
     t = table.sort_values("cv_mae", ascending=False)

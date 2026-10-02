@@ -1,6 +1,6 @@
 # Phase 3: Model A comparison (energy available)
 
-**Status:** complete (2026-10-02).
+**Status:** complete (2026-10-02); re-run from scratch in the verification pass (same accuracy results; see [../verification_log.md](../verification_log.md)).
 **Reproduce:** `python scripts/05_model_a.py` (about an hour the first time; results are cached)
 **Outputs:** `results/model_a/` (tables, out-of-fold predictions, figures) and `models/model_a/` (refitted on all development data)
 
@@ -23,22 +23,23 @@
 
 ## Results
 
-| Model | CV error (Wh) | ± over folds | vs voltage lookup, 95% CI | Folds better | Minutes error | CPU latency | Size |
+| Model | CV error (Wh) | ± over folds | vs voltage lookup, 95% CI | Folds better | Minutes error | CPU latency (range, 4 runs) | Size |
 |---|---|---|---|---|---|---|---|
-| **GRU** | **2.61** | 0.37 | **−0.62 [−1.14, −0.15]** | 4/5 | 0.87 min | 5.5 ms | 0.18 MB |
-| **LSTM** | **2.65** | 0.53 | **−0.58 [−1.18, −0.02]** | 4/5 | 0.87 min | 1.3 ms | 0.23 MB |
-| Random Forest | 3.02 | 0.23 | −0.22 [−0.70, +0.24] | 3/5 | 0.90 min | 6.1 ms | 14.8 MB |
-| Linear Regression | 3.02 | 0.61 | −0.21 [−0.77, +0.32] | 2/5 | 0.90 min | 0.8 ms | <0.01 MB |
-| XGBoost + physics | 3.04 | 0.43 | −0.19 [−0.67, +0.35] | 3/5 | 0.90 min | 2.3 ms | 0.47 MB |
-| *Voltage lookup (non-ML)* | *3.22* | 0.66 | — | — | 0.91 min | 0.4 ms | — |
-| XGBoost | 3.26 | 0.28 | +0.03 [−0.54, +0.58] | 3/5 | 0.92 min | 1.2 ms | 0.47 MB |
-| *Energy counting (BMS)* | *4.49* | 0.95 | +1.28 [+0.89, +1.68] | 0/5 | 1.02 min | 0.2 ms | — |
+| **GRU** | **2.61** | 0.37 | **−0.62 [−1.14, −0.15]** | 4/5 | 0.87 min | 5.5–20 ms | 0.18 MB |
+| **LSTM** | **2.65** | 0.53 | **−0.58 [−1.18, −0.02]** | 4/5 | 0.87 min | 1.3–4.0 ms | 0.23 MB |
+| Random Forest | 3.02 | 0.23 | −0.22 [−0.70, +0.24] | 3/5 | 0.90 min | 6.1–23 ms | 14.8 MB |
+| Linear Regression | 3.02 | 0.61 | −0.21 [−0.77, +0.32] | 2/5 | 0.90 min | 0.8–2.8 ms | <0.01 MB |
+| XGBoost + physics | 3.04 | 0.43 | −0.19 [−0.67, +0.35] | 3/5 | 0.90 min | 2.3–7.5 ms | 0.47 MB |
+| *Voltage lookup (non-ML)* | *3.22* | 0.66 | — | — | 0.91 min | 0.4–1.8 ms | — |
+| XGBoost | 3.26 | 0.28 | +0.03 [−0.54, +0.58] | 3/5 | 0.92 min | 1.2–3.8 ms | 0.47 MB |
+| *Energy counting (BMS)* | *4.49* | 0.95 | +1.28 [+0.89, +1.68] | 0/5 | 1.02 min | 0.2–0.8 ms | — |
 | *Fixed capacity (reference)* | *13.56* | 0.44 | — | 0/5 | 1.85 min | — | — |
 
 How to read this table:
 - **Confidence intervals** come from resampling whole batteries 2,000 times (`evaluate.paired_comparison`). Negative means better than voltage lookup.
 - **Labels carry about 1.5–2.2 Wh of noise** (Phase 2), so that is roughly the best error any model can show.
 - **On rows where the battery's pre-flight voltage is known** (96% of rows), errors drop for every model: GRU 2.39, LSTM 2.45, voltage lookup 2.82 Wh (`mae_known_rest_voltage.csv`).
+- **Safety-related errors** (bias below the reserve, share of large over-predictions) for every model are in `results/model_a/safety_errors.csv`.
 
 ## What this shows
 
@@ -53,7 +54,7 @@ How to read this table:
 
 - **The GRU is slightly optimistic below the reserve.** Where the battery is already below 22.6 V (1,689 rows, 26 chains), it over-predicts by +0.98 Wh on average (voltage lookup: −0.35 Wh). That's the unsafe direction, and Phase 5's calibrated uncertainty and Phase 6's decision rule must cover it.
 - **3 chains (3.8% of rows) have no pre-flight resting voltage,** because their recordings started with the motors running. The worst case is flight 68, over-predicted by 11 Wh (voltage lookup by 30 Wh). A real drone always reads its battery before take-off, so this is a recording gap. Phase 5 should add a "pre-flight voltage known" flag so uncertainty widens in these cases.
-- **CPU latency:** PyTorch's CPU code for LSTMs is heavily optimised and GRU's isn't (independent timing: 0.6 vs 4.8 ms per prediction). Both are well under 10 ms.
+- **CPU latency varies 3–4× between runs on this laptop.** Battery vs mains power and the charge level change the CPU speed (recorded in `results/model_a/latency_conditions.json`), so the table gives each model's range across 4 single-threaded runs rather than one number. What holds in every run: all models predict a single row in under about 25 ms; the LSTM is 3–8× faster than the GRU (PyTorch's CPU code for LSTMs is heavily optimised and GRU's isn't; a bare forward pass is 0.6 vs 4.8 ms); and Random Forest is the slowest and largest. Timing uses the minimum of 5 rounds per run. For the final report, measure once on a cool, fully charged, plugged-in machine.
 
 ## Choices for later phases
 

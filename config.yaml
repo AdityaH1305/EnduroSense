@@ -6,17 +6,16 @@ seed: 42
 
 paths:                      # relative to the project root
   raw: data/raw
-  interim: data/interim
   processed: data/processed
   features: data/features
-  splits: data/splits
   models: models
   results: results
 
 battery:
   pack_wh: 99.9             # DJI TB47D: 4.5 Ah x 22.2 V nominal
-  cells: 6
+  cells: 6                  # informational: 6S LiPo (per-cell voltage = V / 6)
   reserve_v: 22.6           # rest-voltage reserve (~3.77 V/cell); pending guide confirmation
+  full_rest_v: 25.0         # a chain whose first rest voltage is at least this counts as starting full
 
 cleaning:
   time_corrections: config/time_corrections.yaml   # documented fixes to 4 mis-logged start times
@@ -58,7 +57,7 @@ split:
   cv_folds: 5
   version: v2               # v1 (2026-10-01) was invalidated by the start-time ordering fix (2026-10-02)
   file: data/splits/split_v2.json
-  force_test_routes: [R6]     # longest route (~840 m): unseen-distance test at final evaluation
+  force_test_routes: [R6]     # longest route (~820 m cruise): unseen-distance test at final evaluation
   candidates: 5000            # random group splits scored; the best-balanced one is kept
 
 model_a:

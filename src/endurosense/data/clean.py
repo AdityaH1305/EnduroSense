@@ -14,7 +14,6 @@ What profiling showed (Phase 1 investigation):
 """
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 import yaml
 

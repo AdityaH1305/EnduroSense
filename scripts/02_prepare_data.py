@@ -12,13 +12,13 @@ import json
 import numpy as np
 import pandas as pd
 
-from endurosense.config import ROOT, load_config, set_seed
+from endurosense.config import data_path, load_config, set_seed
 from endurosense.data.clean import chronological
 from endurosense.data.load import load_flights, save_processed
 from endurosense.data.prepare import build_tables
 from endurosense.plots import INK_MUTED, PHASE_COLORS, SERIES, apply_style, plt, save
 
-OUT = ROOT / "results" / "phase1"
+OUT = data_path("results") / "phase1"
 FIG = OUT / "figures"
 GRAY_LINE = "#b8b6ae"
 
