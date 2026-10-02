@@ -73,8 +73,15 @@ model_a:
   seq_hz: 2                         # sequence-model input rate
   seq_len: 120                      # 60 s of history at 2 Hz
 
+model_a_training:
+  target: remaining_wh
+  search_trials: {random_forest: 10, xgboost: 30}   # random hyperparameter search, scored by grouped CV
+  nn_grid: {hidden: [32, 64], layers: [1, 2], dropout: [0.1, 0.3]}
+  nn: {lr: 0.001, weight_decay: 0.0001, batch: 256, max_epochs: 60, patience: 8, huber_delta_wh: 2.0}
+  latency_repeats: 1000
+
 model_b:
-  min_leg_s: 3.0                    # cruise runs shorter than this are fragments, not legs
+  min_leg_s: 3.0                   # cruise runs shorter than this are fragments, not legs
   max_speed_ratio: 1.05             # legs flown faster than this x commanded (repositioning) are flagged, not trained on
   exclude_varying_altitude: true    # 2 flights climb during cruise; their climb/descent targets are not comparable
 

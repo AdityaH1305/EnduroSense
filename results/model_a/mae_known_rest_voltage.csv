@@ -1,0 +1,9 @@
+,all rows,known pre-flight voltage
+GRU,2.62,2.39
+LSTM,2.66,2.45
+Random Forest,3.02,2.72
+Linear Regression,3.03,2.64
+XGBoost + physics,3.05,2.59
+Voltage lookup,3.24,2.82
+XGBoost,3.26,2.91
+Energy counting (BMS),4.51,3.98

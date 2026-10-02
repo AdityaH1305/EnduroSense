@@ -142,6 +142,8 @@ EnduroSense/
 
 ## Phase 3: Model A comparison (Weeks 3–4)
 
+> **Status: complete (2026-10-02).** See `docs/phase_notes/phase3_model_a.md`. GRU 2.61 Wh and LSTM 2.65 Wh are the only models clearly better than the fair voltage-lookup baseline (3.22 Wh; 95% CIs exclude zero). Random Forest, Linear Regression and XGBoost + physics are about 3.0 Wh, within noise of the baseline; plain XGBoost is no better. The minutes-left error is about 0.9 min for every model, so it's dominated by unknown future demand. Carry-forwards: the GRU is optimistic below the reserve; add a "pre-flight voltage known" flag in Phase 5.
+
 - **Common interface** (`models/base.py`): `fit`, `predict` and `predict_quantiles`. Tabular models are Ridge (the linear regression, standardised), RandomForest and XGBoost; sequence models are LSTM and GRU in PyTorch on the GPU.
 - **Baselines ML must beat** (`baselines.py`):
   - Voltage lookup: isotonic fit of rest voltage → E_to_reserve, minus energy used in the current flight.
