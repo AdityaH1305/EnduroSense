@@ -8,7 +8,7 @@ def test_config_has_decision_defaults():
     assert cfg["battery"]["reserve_v"] == 22.6
     assert cfg["decision"]["tau"] == 0.95
     assert cfg["uncertainty"]["quantiles"] == sorted(cfg["uncertainty"]["quantiles"])
-    assert len(cfg["uncertainty"]["quantiles"]) == 19
+    assert len(cfg["uncertainty"]["quantiles"]) == 23 and 0.5 in cfg["uncertainty"]["quantiles"]
 
 
 def test_data_path_is_under_project_root():

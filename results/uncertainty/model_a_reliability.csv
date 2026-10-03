@@ -1,0 +1,70 @@
+level,observed,method
+0.01,0.03140811725467784,Raw ensemble (uncalibrated)
+0.025,0.06051815498908387,Raw ensemble (uncalibrated)
+0.05,0.09066152504359457,Raw ensemble (uncalibrated)
+0.1,0.12212768524011718,Raw ensemble (uncalibrated)
+0.15,0.16029439063338918,Raw ensemble (uncalibrated)
+0.2,0.21119608247016305,Raw ensemble (uncalibrated)
+0.25,0.2664718910170824,Raw ensemble (uncalibrated)
+0.3,0.3174454217472176,Raw ensemble (uncalibrated)
+0.35,0.3711150998844609,Raw ensemble (uncalibrated)
+0.4,0.4237865574271643,Raw ensemble (uncalibrated)
+0.45,0.48136428246089064,Raw ensemble (uncalibrated)
+0.5,0.5405354264559622,Raw ensemble (uncalibrated)
+0.55,0.6048383735401793,Raw ensemble (uncalibrated)
+0.6,0.6692229757681388,Raw ensemble (uncalibrated)
+0.65,0.7245047994139634,Raw ensemble (uncalibrated)
+0.7,0.7753814501654759,Raw ensemble (uncalibrated)
+0.75,0.8202369924022077,Raw ensemble (uncalibrated)
+0.8,0.8629275495677233,Raw ensemble (uncalibrated)
+0.85,0.8965899352957843,Raw ensemble (uncalibrated)
+0.9,0.9347074304710642,Raw ensemble (uncalibrated)
+0.95,0.9641576217596469,Raw ensemble (uncalibrated)
+0.975,0.9826180354339116,Raw ensemble (uncalibrated)
+0.99,0.9904743901834626,Raw ensemble (uncalibrated)
+0.01,0.012716264312717489,"Calibrated, constant width"
+0.025,0.03480515453550826,"Calibrated, constant width"
+0.05,0.057299677766223696,"Calibrated, constant width"
+0.1,0.10996244648730831,"Calibrated, constant width"
+0.15,0.15566256379949847,"Calibrated, constant width"
+0.2,0.19685481088574777,"Calibrated, constant width"
+0.25,0.24820022311584095,"Calibrated, constant width"
+0.3,0.2986478590113762,"Calibrated, constant width"
+0.35,0.3477744789665993,"Calibrated, constant width"
+0.4,0.4056049428622396,"Calibrated, constant width"
+0.45,0.4575701513214203,"Calibrated, constant width"
+0.5,0.5078439967893545,"Calibrated, constant width"
+0.55,0.5550420106173499,"Calibrated, constant width"
+0.6,0.6038971114189293,"Calibrated, constant width"
+0.65,0.6526648027653268,"Calibrated, constant width"
+0.7,0.7048051868485373,"Calibrated, constant width"
+0.75,0.7509576249429684,"Calibrated, constant width"
+0.8,0.7952013714367007,"Calibrated, constant width"
+0.85,0.84337340215884,"Calibrated, constant width"
+0.9,0.8931739442459016,"Calibrated, constant width"
+0.95,0.9451751650699639,"Calibrated, constant width"
+0.975,0.9684085419984855,"Calibrated, constant width"
+0.99,0.9860791160684197,"Calibrated, constant width"
+0.01,0.02313526895919269,"Calibrated, per-reading spread (main)"
+0.025,0.03138685001012025,"Calibrated, per-reading spread (main)"
+0.05,0.051956474649216884,"Calibrated, per-reading spread (main)"
+0.1,0.10554391967326787,"Calibrated, per-reading spread (main)"
+0.15,0.15681665685243776,"Calibrated, per-reading spread (main)"
+0.2,0.20022413083476343,"Calibrated, per-reading spread (main)"
+0.25,0.25346316411264186,"Calibrated, per-reading spread (main)"
+0.3,0.3009438221533784,"Calibrated, per-reading spread (main)"
+0.35,0.3505384226064096,"Calibrated, per-reading spread (main)"
+0.4,0.40198176310257977,"Calibrated, per-reading spread (main)"
+0.45,0.45334909935269907,"Calibrated, per-reading spread (main)"
+0.5,0.5078251038156872,"Calibrated, per-reading spread (main)"
+0.55,0.5562721148762793,"Calibrated, per-reading spread (main)"
+0.6,0.6088419391359569,"Calibrated, per-reading spread (main)"
+0.65,0.6542198244612093,"Calibrated, per-reading spread (main)"
+0.7,0.7003511627483072,"Calibrated, per-reading spread (main)"
+0.75,0.7517457907983236,"Calibrated, per-reading spread (main)"
+0.8,0.7968503132200655,"Calibrated, per-reading spread (main)"
+0.85,0.8429203494695823,"Calibrated, per-reading spread (main)"
+0.9,0.896007086067439,"Calibrated, per-reading spread (main)"
+0.95,0.9426238820256445,"Calibrated, per-reading spread (main)"
+0.975,0.9720157876925967,"Calibrated, per-reading spread (main)"
+0.99,0.9851761539241014,"Calibrated, per-reading spread (main)"

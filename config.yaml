@@ -86,9 +86,19 @@ model_b:
   physics_first_margin: 0.05        # use a physics-structured part unless a pure-ML part has >5% lower CV error
 
 uncertainty:
-  interval: 0.90
-  quantiles: [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50,
-              0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
+  interval: 0.90                    # headline range reported everywhere
+  # probability levels at which predictive distributions are stored; the tail levels
+  # (1%, 2.5%, 97.5%, 99%) matter for the 95% decision threshold
+  quantiles: [0.01, 0.025, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50,
+              0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 0.975, 0.99]
+  ensemble_size: 5                  # GRUs in the Model A deep ensemble
+  ensemble_kind: gru                # main Model A from Phase 3
+  mission_method: parts             # Model B: replay per-part errors jointly ("total" = one % error on the mission)
+  # small-sample widening of the ranges, with G = number of battery chains used to calibrate:
+  #   none   - group-weighted quantiles as they are (coverage matches the nominal level on held-out chains)
+  #   smooth - level q -> q(1 + 1/G): the usual conformal guarantee, ~4 points over-coverage here
+  #   ceil   - level q -> ceil((G + 1)q)/G: most conservative, ranges ~70% wider
+  finite_sample_correction: none
 
 decision:
   tau: 0.95                 # approve a mission only if P(success) >= tau; pending guide confirmation

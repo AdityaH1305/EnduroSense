@@ -171,6 +171,8 @@ EnduroSense/
 
 ## Phase 5: Uncertainty and calibration (Weeks 5–6)
 
+> **Status: complete (2026-10-03).** See `docs/phase_notes/phase5_uncertainty.md`. Model A is a 5-GRU ensemble (mean and spread trained separately) with conformal calibration by battery chain: 90% ranges cover 89.5%, 11.2 Wh wide, with the truth below the range 3.7% of the time. Model B replays per-part held-out errors jointly: 90% ranges cover 91.5%, 2.1 Wh wide. Changes from the text below: the model abstains without a pre-flight voltage reading (3 dev chains); no small-sample widening by default (it over-covered at 94–97%); 23 quantile levels from 1% to 99%; only the main models get distributions (not all five algorithms). Carry-forwards: risk is per battery (errors are mostly a per-battery offset), and Model B covers only ~83% at 12 m/s and 100 m.
+
 - **Predictive distributions** as 19 quantiles (0.05–0.95):
   - XGB: `reg:quantileerror` with multiple quantile levels.
   - Ridge: `QuantileRegressor`.

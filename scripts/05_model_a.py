@@ -48,7 +48,9 @@ def fingerprint(dev: pd.DataFrame) -> str:
     h.update(json.dumps({k: cfg[k] for k in ("seed", "battery", "model_a", "model_a_training")},
                         sort_keys=True).encode())
     src = ROOT / "src" / "endurosense"
-    for p in sorted(list((src / "models").glob("*.py")) + [src / "features" / "model_a.py", src / "evaluate.py"]):
+    # only the source files Model A's comparison depends on (not Model B or the uncertainty code)
+    for p in [src / "models" / f for f in ("base.py", "baselines.py", "sequence.py", "tabular.py")] + [
+            src / "features" / "model_a.py", src / "evaluate.py"]:
         h.update(p.read_bytes())
     return h.hexdigest()[:10]
 

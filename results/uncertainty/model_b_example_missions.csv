@@ -1,0 +1,5 @@
+mission,median_wh,low90_wh,high90_wh,width90_wh,q99_wh,warnings
+"R1-like loop, 250 g, 8 m/s, 50 m",18.69,17.71,19.54,1.83,19.7,
+"Delivery 300 m, 500 g, 8 m/s, 50 m",20.44,19.31,21.27,1.96,21.67,
+"Delivery 600 m, 500 g, 8 m/s, 50 m",31.23,29.11,32.77,3.66,33.75,leg length 600 m is outside the tested range 12.4-334.5 m
+"Delivery 300 m, 500 g, 12 m/s, 100 m",23.58,22.59,24.42,1.83,24.61,

@@ -1,0 +1,47 @@
+level,observed,method
+0.01,0.014925373134328361,One error on the whole mission
+0.025,0.026119402985074633,One error on the whole mission
+0.05,0.07089552238805971,One error on the whole mission
+0.1,0.12064676616915423,One error on the whole mission
+0.15,0.14303482587064684,One error on the whole mission
+0.2,0.22512437810945288,One error on the whole mission
+0.25,0.2711442786069653,One error on the whole mission
+0.3,0.2935323383084578,One error on the whole mission
+0.35,0.32338308457711434,One error on the whole mission
+0.4,0.3823383084577113,One error on the whole mission
+0.45,0.4400497512437809,One error on the whole mission
+0.5,0.5084577114427858,One error on the whole mission
+0.55,0.5532338308457712,One error on the whole mission
+0.6,0.5992537313432837,One error on the whole mission
+0.65,0.6564676616915428,One error on the whole mission
+0.7,0.7012437810945279,One error on the whole mission
+0.75,0.7447761194029858,One error on the whole mission
+0.8,0.7945273631840807,One error on the whole mission
+0.85,0.854726368159205,One error on the whole mission
+0.9,0.9049751243781106,One error on the whole mission
+0.95,0.9552238805970164,One error on the whole mission
+0.975,0.9626865671641806,One error on the whole mission
+0.99,0.96766169154229,One error on the whole mission
+0.01,0.007462686567164181,"Per-part errors, replayed jointly (main)"
+0.025,0.022388059701492543,"Per-part errors, replayed jointly (main)"
+0.05,0.04850746268656717,"Per-part errors, replayed jointly (main)"
+0.1,0.1082089552238806,"Per-part errors, replayed jointly (main)"
+0.15,0.15671641791044782,"Per-part errors, replayed jointly (main)"
+0.2,0.20771144278606976,"Per-part errors, replayed jointly (main)"
+0.25,0.256218905472637,"Per-part errors, replayed jointly (main)"
+0.3,0.2960199004975125,"Per-part errors, replayed jointly (main)"
+0.35,0.3333333333333332,"Per-part errors, replayed jointly (main)"
+0.4,0.38731343283582076,"Per-part errors, replayed jointly (main)"
+0.45,0.4736318407960198,"Per-part errors, replayed jointly (main)"
+0.5,0.5034825870646763,"Per-part errors, replayed jointly (main)"
+0.55,0.5694029850746269,"Per-part errors, replayed jointly (main)"
+0.6,0.5917910447761197,"Per-part errors, replayed jointly (main)"
+0.65,0.6564676616915428,"Per-part errors, replayed jointly (main)"
+0.7,0.7037313432835827,"Per-part errors, replayed jointly (main)"
+0.75,0.7360696517412942,"Per-part errors, replayed jointly (main)"
+0.8,0.7945273631840807,"Per-part errors, replayed jointly (main)"
+0.85,0.8477611940298516,"Per-part errors, replayed jointly (main)"
+0.9,0.9067164179104489,"Per-part errors, replayed jointly (main)"
+0.95,0.9651741293532352,"Per-part errors, replayed jointly (main)"
+0.975,0.9701492537313448,"Per-part errors, replayed jointly (main)"
+0.99,0.9900497512437825,"Per-part errors, replayed jointly (main)"

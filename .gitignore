@@ -10,6 +10,7 @@ models/
 
 # Cross-validation cache (22 MB; rebuilt by scripts/05_model_a.py)
 results/model_a/cache/
+results/uncertainty/cache_*.parquet
 
 # Python
 __pycache__/
