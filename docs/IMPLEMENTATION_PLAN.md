@@ -187,6 +187,8 @@ EnduroSense/
 
 ## Phase 6: Feasibility, what-if evaluation and fleet simulation (Weeks 6–7)
 
+> **Status: complete (2026-10-03).** See `docs/phase_notes/phase6_decisions.md`. On 20,000 real battery-state × mission pairs (out-of-fold), the brief's minutes-left rule approves 7.6% of missions that would fail, point estimates 1.5%, EnduroSense at τ = 0.95 0.05% (while refusing 27.5% of feasible missions, mostly those within 10 Wh of the limit). In the fleet simulation: 11.1, 4.3 and 0.23 unsafe missions per 100. P(success) is honest (95–99% band succeeded 99%). Against point estimates with a hindsight-tuned margin the probability is only modestly better (clear gain on borderline cases, 8% fewer battery swaps); its main advantage is a threshold that needs no tuning. The two models' errors are not measurably correlated (+0.16, −0.08 to +0.40). Changes from the text below: a deterministic quantile grid in place of random sampling; borderline and pre-flight sets reported separately.
+
 - **`feasibility.py`:** `p_success(qA, qB)`, computed by inverse-CDF sampling (10k draws) of the margin M = A − B. There's also a Gaussian closed form for speed. The decision is GO if p ≥ τ.
 - **Correlation between the models:** check the correlation of Model A and Model B errors on OOF pairs. If it's clearly non-zero, sample from the joint residuals.
 - **`whatif.py`:**

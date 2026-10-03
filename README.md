@@ -43,6 +43,7 @@ python scripts/04_build_features.py # Phase 2 Model A labels/features + Model B 
 python scripts/05_model_a.py        # Phase 3 Model A comparison (baselines + 5 algorithms, ~1 h, cached) -> results/model_a/
 python scripts/06_model_b.py        # Phase 4 Model B: components, missions, generalisation (~6 min) -> results/model_b/, models/model_b/model_b.pkl
 python scripts/07_uncertainty.py    # Phase 5 calibrated ranges for both models (~10 min, cached) -> results/uncertainty/, models/*/*_calibrated.*
+python scripts/08_decisions.py      # Phase 6 P(success), what-if policy comparison, fleet simulation (~3 min) -> results/decisions/
 ```
 
 Test data is locked: `endurosense.data.split.select(df, "test")` raises unless `final=True`. It is only used in the final evaluation.
@@ -62,6 +63,9 @@ src/endurosense/     the Python package
                      Model B physics/ML/hybrid components and the mission-energy model
   evaluate.py        metrics, grouped CV, paired bootstrap comparison, latency/size
   uncertainty/       conformal calibration by battery chain, predictive distributions, coverage metrics
+  feasibility.py     P(success) = P(energy available >= energy required) and the go / no-go rule
+  whatif.py          real battery states x real missions: policies P1-P4, trade-off curves, reliability of P(success)
+  scheduler.py       fleet simulation on real battery chains
   plots.py           shared figure style
 scripts/             numbered pipeline steps
 tests/               unit and data-regression tests

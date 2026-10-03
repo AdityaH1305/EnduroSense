@@ -62,6 +62,43 @@ def quantiles_from_replay(totals: np.ndarray, groups, levels, correction: str | 
     return conformal_quantiles(totals, groups, levels, correction)
 
 
+def replay_compound(parts_list: list[dict], tuples: pd.DataFrame, n: int, rng: np.random.Generator,
+                    method: str = "parts") -> np.ndarray:
+    """Totals for a mission made of several sorties flown one after another.
+
+    Each sortie gets its own, independently drawn, held-out error set (the errors
+    of different flights are not tied together), and the sorties are added up.
+    """
+    total = np.zeros(n)
+    for parts in parts_list:
+        idx = rng.integers(0, len(tuples), n)
+        total += replay(parts, tuples.iloc[idx], method)
+    return total
+
+
+def oof_parts(make_predictor, flights: pd.DataFrame, legs: pd.DataFrame, folds) -> tuple[pd.DataFrame, pd.Series]:
+    """Out-of-fold predicted parts for every flight: each flight is predicted by a
+    model trained without its fold. ``folds`` yields ``(k, train_flights, val_flights)``."""
+    from endurosense.models.model_b import fit_mission_model
+
+    preds, fold = [], []
+    for k, tr, va in folds:
+        m = fit_mission_model(make_predictor, tr, legs[legs["flight"].isin(tr["flight"])])
+        preds.append(predicted_parts(m, va, legs[legs["flight"].isin(va["flight"])]))
+        fold.append(pd.Series(k, index=preds[-1].index))
+    return pd.concat(preds), pd.concat(fold)
+
+
+def leave_fold_out_quantiles(pred: pd.DataFrame, tuples: pd.DataFrame, fold: pd.Series, levels,
+                             method: str = "parts", correction: str | None = None) -> np.ndarray:
+    """Held-out mission quantiles per flight, using only the other folds' error sets."""
+    out = np.zeros((len(pred), len(levels)))
+    for i, fl in enumerate(pred.index):
+        cal = tuples[(fold != fold[fl]).to_numpy()]
+        out[i] = quantiles_from_replay(replay(pred.loc[fl].to_dict(), cal, method), cal["battery_chain"], levels, correction)
+    return out
+
+
 class CalibratedMissionModel:
     """Mission-energy model + held-out error tuples: gives a distribution for any mission."""
 

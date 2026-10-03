@@ -11,6 +11,8 @@ models/
 # Cross-validation cache (22 MB; rebuilt by scripts/05_model_a.py)
 results/model_a/cache/
 results/uncertainty/cache_*.parquet
+# 5 MB of held-out quantiles per reading; rebuilt by scripts/07_uncertainty.py, read by scripts/08_decisions.py
+results/uncertainty/model_a_oof_quantiles.parquet
 
 # Python
 __pycache__/

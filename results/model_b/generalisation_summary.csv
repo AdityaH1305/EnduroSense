@@ -4,7 +4,7 @@ R5 route = day 1 (4 flights),Linear Regression,4,3.9526481628703225
 R5 route = day 1 (4 flights),Physics,4,8.531197558352844
 R5 route = day 1 (4 flights),Physics + XGBoost,4,7.36103105744384
 R5 route = day 1 (4 flights),Physics-first,4,6.84313133353592
-R5 route = day 1 (4 flights),Random Forest,4,7.002308357908757
+R5 route = day 1 (4 flights),Random Forest,4,7.00230835790878
 R5 route = day 1 (4 flights),XGBoost,4,5.178414161790233
 unseen altitude,Best component each,153,2.576657738004946
 unseen altitude,Linear Regression,153,3.4054491713086925
@@ -18,14 +18,14 @@ unseen day,Linear Regression,153,2.895423132870634
 unseen day,Physics,153,2.713014810870466
 unseen day,Physics + XGBoost,153,2.378987836506943
 unseen day,Physics-first,153,2.324347167779261
-unseen day,Random Forest,153,3.1280637419050397
+unseen day,Random Forest,153,3.1280637419050406
 unseen day,XGBoost,153,2.4874947116758874
 unseen payload,Best component each,152,2.521713211071103
 unseen payload,Linear Regression,152,3.3557211951589965
 unseen payload,Physics,152,3.4920575978482535
 unseen payload,Physics + XGBoost,152,3.11234792103637
 unseen payload,Physics-first,152,3.082825327754521
-unseen payload,Random Forest,152,9.60513219887198
+unseen payload,Random Forest,152,9.605132198871983
 unseen payload,XGBoost,152,9.339695459610542
 unseen speed,Best component each,153,2.63519538446575
 unseen speed,Linear Regression,153,3.101438906892994

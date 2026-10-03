@@ -102,3 +102,16 @@ uncertainty:
 
 decision:
   tau: 0.95                 # approve a mission only if P(success) >= tau; pending guide confirmation
+  # what-if evaluation (Phase 6)
+  state_every_s: 10         # one battery state per this many seconds of each flight
+  n_pairs: 20000            # battery-state x mission pairs
+  borderline_wh: 5.0        # |true margin| below this = a hard, borderline case
+  compound_sizes: [2, 3, 4] # multi-sortie missions: this many recorded flights flown on one battery
+  compound_per_size: 150
+  mc_samples: 2000          # error draws for a multi-sortie mission's distribution
+
+fleet:                      # fleet simulation (Phase 6)
+  drones: 4
+  tasks_per_day: 40
+  days: 200
+  two_sortie_share: 0.3     # share of tasks that are two-sortie missions

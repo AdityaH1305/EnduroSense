@@ -1,0 +1,10 @@
+{
+ "tau": 0.95,
+ "wasted_refusals": 1362,
+ "refused_margin_wh_median": 4.088495173090486,
+ "refused_margin_wh_p90": 10.969954418519812,
+ "refused_share_within_10wh": 0.8707782672540382,
+ "unsafe_approvals": 8,
+ "unsafe_shortfall_wh_worst": -3.9077242160136976,
+ "unsafe_shortfall_wh_median": -1.4022051272764422
+}

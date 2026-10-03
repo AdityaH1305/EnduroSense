@@ -18,7 +18,6 @@ Writes results/uncertainty/*, models/model_a/model_a_calibrated.pt and
 models/model_b/model_b_calibrated.pkl.
 """
 import hashlib
-import importlib.util
 import json
 import pickle
 
@@ -30,7 +29,7 @@ from endurosense.config import ROOT, data_path, load_config, set_seed
 from endurosense.data.split import DEV, dev_folds, select
 from endurosense.features.model_a import FEATURES, sequence_windows
 from endurosense.mission import MissionSpec
-from endurosense.models.model_b import fit_mission_model
+from endurosense.models.model_b import MAIN, fit_mission_model, main_choice, mission_factory
 from endurosense.models.probabilistic import SequenceEnsemble
 from endurosense.models.sequence import WindowStore
 from endurosense.plots import INK_MUTED, SERIES, apply_style, plt, save
@@ -39,13 +38,6 @@ from endurosense.uncertainty import metrics as UM
 from endurosense.uncertainty import mission as UB
 
 OUT = data_path("results") / "uncertainty"
-
-
-def _script06():
-    spec = importlib.util.spec_from_file_location("s06", ROOT / "scripts" / "06_model_b.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
 
 
 def summarise(name, y, qv, levels, groups) -> dict:
@@ -86,13 +78,7 @@ def model_a_oof(dev, windows, gru_cfg, ucfg, target) -> pd.DataFrame:
 
 def leave_fold_out_a(y, oof, groups, levels, scale, correction=None) -> np.ndarray:
     """Quantile values for every row, calibrated on the other folds only."""
-    qv = np.zeros((len(y), len(levels)))
-    for k in np.unique(oof["fold"]):
-        te = (oof["fold"] == k).to_numpy()
-        q_hat = UA.calibrate(y[~te], oof["mu"].to_numpy()[~te], oof["sigma"].to_numpy()[~te], groups[~te], levels,
-                             scale, correction)
-        qv[te] = UA.quantile_values(oof["mu"].to_numpy()[te], oof["sigma"].to_numpy()[te], q_hat, scale)
-    return qv
+    return UA.leave_fold_out_quantiles(y, oof["mu"], oof["sigma"], groups, oof["fold"], levels, scale, correction)
 
 
 def run_model_a(cfg, levels):
@@ -150,6 +136,8 @@ def run_model_a(cfg, levels):
     for q in (0.05, 0.5, 0.95):
         out[f"q{int(q * 100):02d}"] = UM._interp_rows(main, levels, q)
     out.to_parquet(OUT / "model_a_oof_distribution.parquet")
+    # full held-out distribution of every reading, for the decision evaluation (Phase 6)
+    pd.DataFrame(main, index=dev.index, columns=[f"L{q:.3f}" for q in levels]).to_parquet(OUT / "model_a_oof_quantiles.parquet")
     figures_a(variants, y, levels, groups, out, per_chain, target)
     print(table[["method", "mae_median", "cov90", "cov90_by_group", "width90", "truth_below_90_range", "pinball"]].round(3).to_string(index=False))
     print(by[["subgroup", "by", "rows", "coverage", "width", "truth_below_range"]].round(3).to_string(index=False), flush=True)
@@ -186,33 +174,20 @@ def figures_a(variants, y, levels, groups, out, per_chain, target):
 
 # ============================================================ Model B
 def run_model_b(cfg, levels):
-    s06 = _script06()
     legs = select(pd.read_parquet(data_path("features") / "model_b_legs.parquet"), DEV)
     fb = select(pd.read_parquet(data_path("features") / "model_b_flights.parquet"), DEV)
-    log = pd.read_csv(data_path("results") / "model_b" / "component_search_log.csv")
-    best_cfg = {(r.family, r.component): json.loads(r.config)
-                for r in log.loc[log.groupby(["family", "component"])["cv_mae"].idxmin()].itertuples()}
-    main = json.loads((data_path("results") / "model_b" / "combinations.json").read_text())[s06.MAIN]
-    choice = {c: (fam, best_cfg[(fam, c)]) for c, fam in main.items()}
-    print(f"Model B: {s06.MAIN} {main}, {len(fb)} dev flights", flush=True)
+    choice = main_choice()
+    print(f"Model B: {MAIN} { {c: v[0] for c, v in choice.items()} }, {len(fb)} dev flights", flush=True)
 
-    preds, folds = [], []
-    for k, tr, va in dev_folds(fb):
-        m = fit_mission_model(s06.mission_factory(choice), tr, legs[legs["flight"].isin(tr["flight"])])
-        preds.append(UB.predicted_parts(m, va, legs[legs["flight"].isin(va["flight"])]))
-        folds.append(pd.Series(k, index=preds[-1].index))
-    pred, fold = pd.concat(preds), pd.concat(folds)
+    pred, fold = UB.oof_parts(mission_factory(choice), fb, legs, dev_folds(fb))
     tuples = UB.residual_tuples(pred, fb)
+    # held-out parts and error sets of every flight, for the decision evaluation (Phase 6)
+    pred.add_prefix("pred_").join(tuples.add_prefix("err_")).assign(fold=fold).to_parquet(OUT / "model_b_oof_parts.parquet")
     f = fb.set_index("flight").loc[pred.index]
     y, groups = f["total_wh"].to_numpy(), f["battery_chain"].to_numpy()
 
     def leave_fold_out_b(method, correction=None):
-        qv = np.zeros((len(y), len(levels)))
-        for i, fl in enumerate(pred.index):
-            cal = tuples[(fold != fold[fl]).to_numpy()]                   # other folds only
-            totals = UB.replay(pred.loc[fl].to_dict(), cal, method)
-            qv[i] = UB.quantiles_from_replay(totals, cal["battery_chain"], levels, correction)
-        return qv
+        return UB.leave_fold_out_quantiles(pred, tuples, fold, levels, method, correction)
 
     variants = {"One error on the whole mission": leave_fold_out_b("total"),
                 "Per-part errors, replayed jointly (main)": leave_fold_out_b("parts")}
@@ -228,7 +203,7 @@ def run_model_b(cfg, levels):
     by.to_csv(OUT / "model_b_coverage_by_subgroup.csv", index=False)
     tuples.drop(columns="battery_chain").corr().round(3).to_csv(OUT / "model_b_error_correlations.csv")
 
-    final = fit_mission_model(s06.mission_factory(choice), fb, legs)
+    final = fit_mission_model(mission_factory(choice), fb, legs)
     calibrated = UB.CalibratedMissionModel(final, tuples, levels, cfg["uncertainty"]["mission_method"])
     with open(data_path("models") / "model_b" / "model_b_calibrated.pkl", "wb") as fh:
         pickle.dump(calibrated, fh)

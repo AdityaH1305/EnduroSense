@@ -49,6 +49,19 @@ def quantile_values(mu, sigma, q_hat, scale: str = "sigma") -> np.ndarray:
     return mu + (sigma if scale == "sigma" else 1.0) * q_hat
 
 
+def leave_fold_out_quantiles(y, mu, sigma, groups, folds, levels, scale: str = "sigma",
+                             correction: str | None = None) -> np.ndarray:
+    """Held-out predictive quantiles for every row: each fold's rows are calibrated
+    using only the *other* folds' held-out errors (``mu``/``sigma`` must be out-of-fold)."""
+    y, mu, sigma, groups, folds = (np.asarray(v) for v in (y, mu, sigma, groups, folds))
+    out = np.zeros((len(y), len(levels)))
+    for k in np.unique(folds):
+        te = folds == k
+        q_hat = calibrate(y[~te], mu[~te], sigma[~te], groups[~te], levels, scale, correction)
+        out[te] = quantile_values(mu[te], sigma[te], q_hat, scale)
+    return out
+
+
 class CalibratedBatteryModel:
     """Ensemble + calibrated multipliers: gives a distribution of remaining Wh per reading."""
 

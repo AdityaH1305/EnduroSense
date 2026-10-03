@@ -36,47 +36,13 @@ from endurosense.data.split import DEV, dev_folds, select
 from endurosense.evaluate import metrics, paired_comparison
 from endurosense.mission import MissionSpec
 from endurosense.models import tabular as T
-from endurosense.models.model_b import (COMPONENTS, LEG_COMPONENTS, HybridModel, fit_mission_model,
-                                        physics_model)
+from endurosense.models.model_b import (COMPONENTS, FAMILIES, LEG_COMPONENTS, MAIN, choose_family,
+                                        fit_mission_model, make_component, mission_factory)
 from endurosense.plots import SERIES, apply_style, plt, save
 
 OUT = data_path("results") / "model_b"
 MODELS = data_path("models") / "model_b"
-FAMILIES = ["Physics", "Linear Regression", "Random Forest", "XGBoost", "Physics + XGBoost"]
-PHYSICS_STRUCTURED = ["Physics", "Physics + XGBoost"]
-MAIN = "Physics-first"                         # the Model B used by later phases
 COMPARED = FAMILIES + ["Best component each", MAIN]
-
-
-def choose_family(scores: dict, rule: str) -> str:
-    """Pick the algorithm for one part from its CV errors.
-
-    ``best``: lowest error. ``physics_first``: the better physics-structured
-    part, unless a pure-ML part is more than ``physics_first_margin`` better.
-    Physics-structured parts extrapolate to unseen settings and showed half the
-    systematic bias at the highest speed, at the same overall accuracy.
-    """
-    best_all = min(scores, key=scores.get)
-    if rule == "best":
-        return best_all
-    best_phys = min(PHYSICS_STRUCTURED, key=scores.get)
-    margin = load_config()["model_b"]["physics_first_margin"]
-    return best_all if scores[best_all] < (1 - margin) * scores[best_phys] else best_phys
-KIND = {"Linear Regression": "linear", "Random Forest": "random_forest", "XGBoost": "xgboost"}
-
-
-def make(family: str, comp: str, cfg: dict | None, drop: tuple = ()):
-    """Unfitted predictor for one component (``drop``: input columns to withhold)."""
-    feats = [f for f in COMPONENTS[comp][1] if f not in drop]
-    if family == "Physics":
-        return physics_model(comp)
-    if family == "Physics + XGBoost":
-        resid = T.xgboost(**cfg)
-        resid.features = feats
-        return HybridModel(physics_model(comp), resid)
-    m = T.FACTORIES[KIND[family]](**cfg)
-    m.features = feats
-    return m
 
 
 def component_rows(comp: str, flights_b: pd.DataFrame, legs: pd.DataFrame) -> pd.DataFrame:
@@ -86,7 +52,7 @@ def component_rows(comp: str, flights_b: pd.DataFrame, legs: pd.DataFrame) -> pd
 def cv_component(family, comp, cfg, rows, target):
     errs, oof = [], pd.Series(np.nan, index=rows.index)
     for _, tr, va in dev_folds(rows):
-        p = make(family, comp, cfg).fit(tr, target).predict(va)
+        p = make_component(family, comp, cfg).fit(tr, target).predict(va)
         oof.loc[va.index] = p
         errs.append(float(np.mean(np.abs(p - va[target].to_numpy()))))
     return float(np.mean(errs)), oof
@@ -103,7 +69,7 @@ def search_components(flights_b, legs, n_trials: int, seed: int):
             elif family == "Physics + XGBoost":
                 grid = T.sample_configs("xgboost", n_trials, seed + 1)
             else:
-                grid = T.sample_configs(KIND[family], n_trials, seed)
+                grid = T.sample_configs({"Linear Regression": "linear", "Random Forest": "random_forest", "XGBoost": "xgboost"}[family], n_trials, seed)
             for cfg in grid:
                 mae, oof = cv_component(family, comp, cfg, rows, target)
                 log.append({"component": comp, "family": family, "config": json.dumps(cfg, default=str), "cv_mae": mae})
@@ -111,11 +77,6 @@ def search_components(flights_b, legs, n_trials: int, seed: int):
                     best[(family, comp)] = {"cfg": cfg, "cv_mae": mae, "oof": oof}
         print(f"  {comp:12s} " + "  ".join(f"{f}: {best[(f, comp)]['cv_mae']:.3f}" for f in FAMILIES), flush=True)
     return best, pd.DataFrame(log)
-
-
-def mission_factory(choice: dict, drop: tuple = ()):
-    """choice: component -> (family, cfg)."""
-    return lambda comp: make(choice[comp][0], comp, choice[comp][1], drop)
 
 
 def mission_cv(choice, flights_b, legs, drop: tuple = (), typical_wind: bool = False) -> pd.Series:
@@ -154,7 +115,7 @@ def nested_selection_cv(best, flights_b, legs, rule: str) -> tuple[pd.Series, pd
                     if j == k:
                         continue
                     r_tr, r_va = rows[~rows["flight"].isin(inner_va["flight"])], rows[rows["flight"].isin(inner_va["flight"])]
-                    p = make(fam, comp, best[(fam, comp)]["cfg"]).fit(r_tr, target).predict(r_va)
+                    p = make_component(fam, comp, best[(fam, comp)]["cfg"]).fit(r_tr, target).predict(r_va)
                     errs.append(np.mean(np.abs(p - r_va[target].to_numpy())))
                 score[fam] = float(np.mean(errs))
             fam = choose_family(score, rule)
