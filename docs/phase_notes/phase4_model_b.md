@@ -131,6 +131,7 @@ Each test leaves out every development flight with one setting value, trains on 
 ## Verification
 
 - `pytest`: **74 passed**; `pyflakes` clean.
+- **Verification pass 4:** Random Forest results used to differ in the 15th digit between runs (trees summed across threads). Predictions now add the trees in a fixed order, so two runs of the script are byte-identical. No reported number changed.
 - **Tests added in this phase:**
   - momentum-theory curve shape
   - the mass-bounded fit

@@ -5,8 +5,9 @@ in *this* state, have managed *that* recorded mission?" and know the answer:
 
 - a **battery state** is a real held-out reading; its true energy above the
   reserve is known from its chain (Phase 2 labels);
-- a **mission** is a real held-out flight, or several flown one after another
-  ("sorties"); its true energy is what those flights measured;
+- a **mission** is a real held-out flight, or two or three flights that really
+  were flown on one battery ("sorties"); its true energy is what those flights
+  measured;
 - the mission **would have succeeded** if true energy available >= true energy
   required.
 
@@ -25,12 +26,18 @@ threshold, and sweeping the threshold traces a safety/efficiency curve):
 - **P3 EnduroSense**: P(success) from both calibrated distributions. Approve
   if >= tau.
 - **P4 oracle**: the true margin (the best any policy could do).
+
+Confidence intervals resample battery chains. A chain can appear in a pair
+twice, as the battery and as the source of the mission's flights, so one
+resample of chains reweights both sides at once.
 """
 from __future__ import annotations
 
+from itertools import combinations
+
 import numpy as np
 import pandas as pd
-from sklearn.metrics import roc_auc_score, roc_curve
+from sklearn.metrics import auc, roc_curve
 
 from endurosense.config import load_config
 from endurosense.feasibility import p_success_batch
@@ -60,41 +67,40 @@ def typical_power_by_fold(a: pd.DataFrame) -> pd.Series:
     return pd.Series({k: float(on.loc[on["fold"] != k, "p"].median()) for k in np.unique(a["fold"])})
 
 
-def build_missions(parts: pd.DataFrame, flights_b: pd.DataFrame, levels, rng: np.random.Generator) -> tuple[pd.DataFrame, np.ndarray]:
+def build_missions(parts: pd.DataFrame, flights_b: pd.DataFrame, levels) -> tuple[pd.DataFrame, np.ndarray]:
     """Single-flight missions and multi-sortie missions, with their held-out distributions.
 
     ``parts`` is Phase 5's ``model_b_oof_parts`` (pred_*, err_*, fold; indexed by flight).
-    Multi-sortie missions join flights of the same fold, so one set of "other
-    folds" calibrates the whole mission. Returns the mission table and a
-    (missions, levels) array of predictive quantiles.
+    The single-flight missions come first, in the order of ``parts``. A multi-sortie
+    mission is every combination of 2 (or 3) flights that were flown on the same
+    battery, so its sorties share a day, a battery and a fold. Returns the mission
+    table and a (missions, levels) array of predictive quantiles.
     """
     cfg = load_config()["decision"]
     pred = parts[[c for c in parts if c.startswith("pred_")]].rename(columns=lambda c: c[5:])
     tuples = parts[[c for c in parts if c.startswith("err_")]].rename(columns=lambda c: c[4:])
-    fold = parts["fold"]
+    fold, chain = parts["fold"], tuples["battery_chain"]
     f = flights_b.set_index("flight").loc[parts.index]
     air_min = (f["climb_s"] + f["cruise_s"] + f["descent_s"] + f["hover_s"]) / 60.0
 
-    rows = [{"flights": (fl,), "sorties": 1, "fold": int(fold[fl]), "true_wh": float(f.loc[fl, "total_wh"]),
-             "duration_min": float(air_min[fl])} for fl in parts.index]
+    rows = [{"flights": (int(fl),), "sorties": 1, "fold": int(fold[fl]), "battery_chain": int(chain[fl]),
+             "true_wh": float(f.loc[fl, "total_wh"]), "duration_min": float(air_min[fl])} for fl in parts.index]
     q = [UB.leave_fold_out_quantiles(pred, tuples, fold, levels)]
 
-    compound_q = []
-    for k in cfg["compound_sizes"]:
-        for _ in range(cfg["compound_per_size"]):
-            fd = int(rng.choice(np.unique(fold)))
-            members = tuple(int(x) for x in rng.choice(fold.index[fold == fd], k, replace=False))
-            cal = tuples[(fold != fd).to_numpy()]
-            w = group_weights(cal["battery_chain"])
-            draws = cal.iloc[rng.choice(len(cal), 4 * cfg["mc_samples"], p=w / w.sum())]    # chain-weighted pool
-            totals = UB.replay_compound([pred.loc[m].to_dict() for m in members], draws, cfg["mc_samples"], rng)
-            compound_q.append(np.quantile(totals, levels))
-            rows.append({"flights": members, "sorties": k, "fold": fd, "true_wh": float(f.loc[list(members), "total_wh"].sum()),
-                         "duration_min": float(air_min[list(members)].sum())})
-    if compound_q:
-        q.append(np.array(compound_q))
-    missions = pd.DataFrame(rows)
-    return missions, np.vstack(q)
+    calibration = {int(k): tuples[(fold != k).to_numpy()] for k in np.unique(fold)}
+    multi = []
+    for ch, flights in chain.groupby(chain).groups.items():
+        for k in cfg["compound_sizes"]:
+            for members in combinations(sorted(flights), k):
+                cal = calibration[int(fold[members[0]])]
+                totals = UB.replay_compound([pred.loc[m].to_dict() for m in members], cal)
+                multi.append(UB.quantiles_from_replay(totals, cal["battery_chain"], levels))
+                rows.append({"flights": tuple(int(m) for m in members), "sorties": k, "fold": int(fold[members[0]]),
+                             "battery_chain": int(ch), "true_wh": float(f.loc[list(members), "total_wh"].sum()),
+                             "duration_min": float(air_min[list(members)].sum())})
+    if multi:
+        q.append(np.array(multi))
+    return pd.DataFrame(rows), np.vstack(q)
 
 
 def make_pairs(states: pd.DataFrame, missions: pd.DataFrame, n: int, rng: np.random.Generator) -> pd.DataFrame:
@@ -102,6 +108,7 @@ def make_pairs(states: pd.DataFrame, missions: pd.DataFrame, n: int, rng: np.ran
     si, mi = rng.integers(0, len(states), n), rng.integers(0, len(missions), n)
     p = pd.DataFrame({"state": states.index.to_numpy()[si], "mission": mi,
                       "battery_chain": states["battery_chain"].to_numpy()[si],
+                      "mission_chain": missions["battery_chain"].to_numpy()[mi],
                       "available_wh": states["remaining_wh"].to_numpy()[si],
                       "required_wh": missions["true_wh"].to_numpy()[mi]})
     p["true_margin_wh"] = p["available_wh"] - p["required_wh"]
@@ -148,34 +155,51 @@ def approved_at_unsafe(score: np.ndarray, feasible: np.ndarray, max_unsafe: floa
     """Best share of feasible missions approved while the unsafe-approval rate
     stays at or below ``max_unsafe``; also returns the threshold that achieves it."""
     fpr, tpr, thr = roc_curve(feasible, score)
-    ok = fpr <= max_unsafe
+    ok = fpr <= max_unsafe + 1e-12
     i = int(np.flatnonzero(ok)[np.argmax(tpr[ok])])
     return float(tpr[i]), float(thr[i])
 
 
+def _curve_stats(score: np.ndarray, feasible: np.ndarray, unsafe_levels, weight=None) -> dict:
+    """Ranking quality (AUC) and feasible missions approved at fixed unsafe-approval rates."""
+    fpr, tpr, _ = roc_curve(feasible, score, sample_weight=weight)
+    out = {"auc": float(auc(fpr, tpr))}
+    for u in unsafe_levels:
+        out[f"approved_at_{int(round(u * 100))}pct_unsafe"] = float(tpr[fpr <= u + 1e-12].max())
+    return out
+
+
+def _chain_resamples(pairs: pd.DataFrame, n_boot: int, seed: int):
+    """Bootstrap weights per pair: battery chains are drawn with replacement and a pair
+    counts (times its battery was drawn) x (times its mission's battery was drawn)."""
+    chains = np.union1d(pairs["battery_chain"], pairs["mission_chain"])
+    a, b = np.searchsorted(chains, pairs["battery_chain"]), np.searchsorted(chains, pairs["mission_chain"])
+    feasible, rng = pairs["feasible"].to_numpy(), np.random.default_rng(seed)
+    for _ in range(n_boot):
+        mult = np.bincount(rng.integers(0, len(chains), len(chains)), minlength=len(chains))
+        w = (mult[a] * mult[b]).astype(float)
+        keep = w > 0
+        if feasible[keep].all() or not feasible[keep].any():
+            continue
+        yield keep, w[keep]
+
+
 def summary_table(scores: pd.DataFrame, pairs: pd.DataFrame, unsafe_levels=(0.01, 0.02, 0.05),
-                  n_boot: int = 300, seed: int = 42) -> pd.DataFrame:
+                  n_boot: int = 500, seed: int = 42) -> pd.DataFrame:
     """Per policy: ranking quality (AUC) and the share of feasible missions approved
     at fixed unsafe-approval rates, with 95% intervals from resampling battery chains."""
     feasible = pairs["feasible"].to_numpy()
-    chains = pairs["battery_chain"].to_numpy()
-    uniq = np.unique(chains)
-    by_chain = {c: np.flatnonzero(chains == c) for c in uniq}
-    rng = np.random.default_rng(seed)
+    point = {c: _curve_stats(scores[c].to_numpy(), feasible, unsafe_levels) for c in scores}
+    boot = {c: [] for c in scores}
+    for keep, w in _chain_resamples(pairs, n_boot, seed):
+        for c in scores:
+            boot[c].append(_curve_stats(scores[c].to_numpy()[keep], feasible[keep], unsafe_levels, w))
     rows = []
-    for col in scores:
-        sc = scores[col].to_numpy()
-        row = {"policy": POLICIES[col], "auc": float(roc_auc_score(feasible, sc))}
-        boot = {u: [] for u in unsafe_levels}
-        for _ in range(n_boot):
-            idx = np.concatenate([by_chain[c] for c in rng.choice(uniq, len(uniq))])
-            if feasible[idx].all() or (~feasible[idx]).all():
-                continue
-            for u in unsafe_levels:
-                boot[u].append(approved_at_unsafe(sc[idx], feasible[idx], u)[0])
-        for u in unsafe_levels:
-            row[f"approved_at_{int(u * 100)}pct_unsafe"] = approved_at_unsafe(sc, feasible, u)[0]
-            row[f"ci_low_{int(u * 100)}"], row[f"ci_high_{int(u * 100)}"] = np.percentile(boot[u], [2.5, 97.5])
+    for c in scores:
+        b, row = pd.DataFrame(boot[c]), {"policy": POLICIES[c]}
+        for k, v in point[c].items():
+            row[k] = v
+            row[f"{k}_ci_low"], row[f"{k}_ci_high"] = np.percentile(b[k], [2.5, 97.5])
         rows.append(row)
     return pd.DataFrame(rows)
 
@@ -185,24 +209,14 @@ def paired_gain(scores: pd.DataFrame, pairs: pd.DataFrame, a: str = "P3", b: str
     """Policy ``a`` minus policy ``b`` on the same pairs: difference in ranking quality
     and in the share of feasible missions approved at fixed unsafe-approval rates.
     95% intervals resample battery chains (both policies see the same resample)."""
-    feasible, chains = pairs["feasible"].to_numpy(), pairs["battery_chain"].to_numpy()
-    uniq = np.unique(chains)
-    by_chain = {c: np.flatnonzero(chains == c) for c in uniq}
-    sa, sb = scores[a].to_numpy(), scores[b].to_numpy()
+    feasible, sa, sb = pairs["feasible"].to_numpy(), scores[a].to_numpy(), scores[b].to_numpy()
 
-    def diffs(idx):
-        out = {"auc": roc_auc_score(feasible[idx], sa[idx]) - roc_auc_score(feasible[idx], sb[idx])}
-        for u in unsafe_levels:
-            out[f"approved_at_{int(u * 100)}pct_unsafe"] = (approved_at_unsafe(sa[idx], feasible[idx], u)[0]
-                                                           - approved_at_unsafe(sb[idx], feasible[idx], u)[0])
-        return out
+    def diffs(keep, w):
+        x, y = _curve_stats(sa[keep], feasible[keep], unsafe_levels, w), _curve_stats(sb[keep], feasible[keep], unsafe_levels, w)
+        return {k: x[k] - y[k] for k in x}
 
-    point, rng, boot = diffs(np.arange(len(pairs))), np.random.default_rng(seed), []
-    for _ in range(n_boot):
-        idx = np.concatenate([by_chain[c] for c in rng.choice(uniq, len(uniq))])
-        if not (feasible[idx].all() or (~feasible[idx]).all()):
-            boot.append(diffs(idx))
-    boot = pd.DataFrame(boot)
+    point = diffs(np.ones(len(pairs), bool), None)
+    boot = pd.DataFrame([diffs(keep, w) for keep, w in _chain_resamples(pairs, n_boot, seed)])
     return pd.DataFrame([{"metric": k, "gain": v, "ci_low": np.percentile(boot[k], 2.5), "ci_high": np.percentile(boot[k], 97.5),
                           "share_of_resamples_positive": float((boot[k] > 0).mean())} for k, v in point.items()])
 

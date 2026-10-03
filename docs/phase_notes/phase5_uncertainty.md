@@ -79,7 +79,8 @@ The default is **none**. The ranges are calibrated to the nominal level, and cau
 
 On held-out flights we know how wrong each part of the estimate was. For a new mission, every held-out flight's set of errors is **replayed together** on the mission's parts, and the spread of totals gives the distribution (`uncertainty/mission.py`).
 - **Why jointly:** the parts' errors are correlated. Descent and ground are at −0.63, because touchdown timing moves energy between them. Treating the parts as independent would overstate the uncertainty (0.82 against the real 0.69 Wh).
-- **Units:** climb, descent, hover and ground errors are in Wh. The **cruise-leg error is a percentage** (4.3%), so missions with more or longer legs get proportionally wider ranges.
+- **Units:** climb, descent, hover and ground errors are in Wh. The **cruise-leg error is a percentage** (standard deviation 4.3%, typical size 3.1%), so missions with more or longer legs get proportionally wider ranges.
+- **Errors are shared within a battery.** Flights on one battery are flown the same day in the same conditions, and about 46% of the error variance is common to them. Two consequences: calibration gives every battery chain equal weight (as for Model A), and a mission of several sorties on one battery gets **one shared error set**, not an independent one per sortie (`replay_compound`; found in verification pass 4, details in the Phase 6 notes).
 
 ### Results (`model_b_intervals.csv`)
 
@@ -110,7 +111,8 @@ Coverage of the 90% range is **83% at 12 m/s** (30 flights) and **82% at 100 m a
 
 ## Verification
 
-- `pytest`: **85 passed**; `pyflakes` clean.
+- `pytest`: **85 passed** at the end of the phase; `pyflakes` clean.
+- **Verification pass 4** (see `docs/verification_log.md`): every number in this note was recomputed with separate code; retraining the ensemble from scratch reproduced the held-out predictions exactly; weighted quantiles were made independent of rounding at exact ties (no headline number changed); tests were added until all deliberate one-line bugs were caught.
 - **New tests:**
   - equal weight per group
   - weighted quantiles (a heavy group can't dominate)

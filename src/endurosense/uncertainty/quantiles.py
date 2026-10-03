@@ -39,11 +39,16 @@ def group_weights(groups) -> np.ndarray:
 
 
 def weighted_quantile(values, q, weights) -> float:
-    """Quantile of ``values`` under ``weights`` (inverse of the weighted CDF, lower interpolation)."""
+    """Quantile of ``values`` under ``weights`` (inverse of the weighted CDF, lower interpolation).
+
+    The smallest value whose cumulative weight reaches ``q``. A cumulative weight that
+    equals ``q`` up to rounding counts as reaching it, so exact ties (common with
+    group weights such as 1/2, 1/3) do not depend on floating-point rounding.
+    """
     v, w = np.asarray(values, float), np.asarray(weights, float)
-    order = np.argsort(v)
+    order = np.argsort(v, kind="stable")
     v, cw = v[order], np.cumsum(w[order])
-    return float(v[min(np.searchsorted(cw, q * cw[-1], side="left"), len(v) - 1)])
+    return float(v[min(np.searchsorted(cw, (q - 1e-9) * cw[-1], side="left"), len(v) - 1)])
 
 
 def adjusted_level(q: float, n_groups: int, correction: str | None = None) -> float:
@@ -101,7 +106,9 @@ class PredictiveDistribution:
     def sample(self, n: int, rng: np.random.Generator) -> np.ndarray:
         return np.atleast_1d(self.quantile(rng.uniform(1e-6, 1 - 1e-6, n)))
 
-    def interval(self, coverage: float) -> tuple[float, float]:
+    def interval(self, coverage: float | None = None) -> tuple[float, float]:
+        """Central range; by default the headline level from the config (90%)."""
+        coverage = load_config()["uncertainty"]["interval"] if coverage is None else coverage
         a = (1 - coverage) / 2
         return float(self.quantile(a)), float(self.quantile(1 - a))
 

@@ -86,7 +86,8 @@ model_b:
   physics_first_margin: 0.05        # use a physics-structured part unless a pure-ML part has >5% lower CV error
 
 uncertainty:
-  interval: 0.90                    # headline range reported everywhere
+  interval: 0.90                    # headline range: default of PredictiveDistribution.interval() and of the
+                                    # per-subgroup coverage tables. The interval tables always report 50/80/90/95%.
   # probability levels at which predictive distributions are stored; the tail levels
   # (1%, 2.5%, 97.5%, 99%) matter for the 95% decision threshold
   quantiles: [0.01, 0.025, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50,
@@ -106,9 +107,7 @@ decision:
   state_every_s: 10         # one battery state per this many seconds of each flight
   n_pairs: 20000            # battery-state x mission pairs
   borderline_wh: 5.0        # |true margin| below this = a hard, borderline case
-  compound_sizes: [2, 3, 4] # multi-sortie missions: this many recorded flights flown on one battery
-  compound_per_size: 150
-  mc_samples: 2000          # error draws for a multi-sortie mission's distribution
+  compound_sizes: [2, 3]    # multi-sortie missions: every set of this many flights flown on one battery
 
 fleet:                      # fleet simulation (Phase 6)
   drones: 4

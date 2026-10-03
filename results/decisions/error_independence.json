@@ -1,6 +1,14 @@
 {
  "flights": 120,
- "correlation": 0.15667757757832054,
- "ci_low": -0.07921560662133524,
- "ci_high": 0.40090552650991856
+ "correlation": 0.15650299528971537,
+ "ci_low": -0.07104977642442993,
+ "ci_high": 0.3997100274345294,
+ "rank_correlation": 0.27260226404611426,
+ "rank_p_value": 0.002593474709414249,
+ "battery_error_sd_wh": 3.8237404531877024,
+ "mission_error_sd_wh": 0.7188783632498051,
+ "margin_error_sd_if_independent_wh": 3.8907296429452427,
+ "margin_error_sd_actual_wh": 3.7785427016772375,
+ "margin_90_range_covers": 0.925,
+ "margin_truth_below_90_range": 0.016666666666666666
 }

@@ -13,6 +13,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from endurosense.config import load_config
 from endurosense.uncertainty.quantiles import group_weights
 
 
@@ -55,8 +56,10 @@ def reliability(y, q_values, levels, groups) -> pd.DataFrame:
                          "observed": np.average(y <= q_values, axis=0, weights=w)})
 
 
-def coverage_by(y, q_values, levels, by, coverage: float = 0.9) -> pd.DataFrame:
-    """Coverage and width of the central ``coverage`` interval within each subgroup of ``by``."""
+def coverage_by(y, q_values, levels, by, coverage: float | None = None) -> pd.DataFrame:
+    """Coverage and width of the central ``coverage`` interval (default: the headline
+    level in the config) within each subgroup of ``by``."""
+    coverage = load_config()["uncertainty"]["interval"] if coverage is None else coverage
     y, q_values, levels = np.asarray(y, float), np.asarray(q_values, float), np.asarray(levels, float)
     lo, hi = _interp_rows(q_values, levels, (1 - coverage) / 2), _interp_rows(q_values, levels, 1 - (1 - coverage) / 2)
     d = pd.DataFrame({"by": np.asarray(by), "inside": (y >= lo) & (y <= hi), "width": hi - lo,

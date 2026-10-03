@@ -21,7 +21,9 @@ One day:
 4. Flying a task draws its true energy. If that is more than the battery truly
    had above the reserve, the mission cut into the reserve: an **unsafe
    mission** (reserve violation).
-5. A battery with no recorded telemetry left is swapped.
+5. A battery with no recorded telemetry left is swapped. (About half of the
+   recordings stop a few Wh before the reserve, so even the oracle leaves some
+   energy unused.)
 
 Simplification: after a mission the battery's telemetry is taken from the
 chain reading with the same energy drawn, which is usually a mid-flight
@@ -42,9 +44,9 @@ from endurosense.feasibility import p_success_batch
 class Battery:
     """One real chain: energy drawn at each reading, in order, and the reading ids."""
     chain: int
-    e: np.ndarray            # energy drawn since the chain started (non-decreasing)
+    e: np.ndarray            # energy drawn since the battery's starting reading (non-decreasing, starts at 0)
     rows: np.ndarray         # reading ids (index into the Model A tables)
-    e_res: float             # energy drawn at which the reserve is reached
+    e_res: float             # energy drawn at which the reserve is reached = true energy above the reserve at the start
 
     def row_at(self, energy: float) -> int:
         return int(self.rows[min(np.searchsorted(self.e, energy), len(self.e) - 1)])
@@ -64,8 +66,15 @@ def batteries_from(a: pd.DataFrame) -> list[Battery]:
         on = np.flatnonzero(g["motors_on"].to_numpy() == 1)
         g = g.iloc[max(on[0] - 1, 0):] if len(on) else g
         e = np.maximum.accumulate(g["e_chain_wh"].to_numpy())
-        out.append(Battery(int(ch), e, g.index.to_numpy(), float(g["e_res_wh"].iloc[0])))
+        out.append(Battery(int(ch), e - e[0], g.index.to_numpy(), float(g["e_res_wh"].iloc[0]) - e[0]))
     return out
+
+
+def choose_drone(score: np.ndarray, predicted_wh: np.ndarray, threshold: float) -> int | None:
+    """Best fit: among the drones whose score clears the threshold, the one with the
+    least predicted energy. ``None`` if no drone is approved."""
+    ok = np.flatnonzero(np.asarray(score) >= threshold)
+    return int(ok[np.argmin(np.asarray(predicted_wh)[ok])]) if len(ok) else None
 
 
 class FleetSimulator:
@@ -107,8 +116,8 @@ class FleetSimulator:
         for task in tasks:
             rows = np.array([b.row_at(e) for b, e in zip(bats, used)])
             score, med = self._scores(policy, rows, used, bats, task)
-            ok = np.flatnonzero(score >= threshold)
-            if len(ok) == 0:
+            d = choose_drone(score, med, threshold)
+            if d is None:
                 d = int(np.argmin(med))
                 swap(d)
                 rows[d] = bats[d].row_at(0.0)
@@ -116,8 +125,6 @@ class FleetSimulator:
                 if score[d] < threshold:
                     out["dropped"] += 1
                     continue
-                ok = np.array([d])
-            d = int(ok[np.argmin(med[ok])])
             cost = float(self.missions["true_wh"].iloc[task])
             out["unsafe"] += int(cost > bats[d].e_res - used[d])
             out["completed"] += 1

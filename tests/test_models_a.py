@@ -39,6 +39,19 @@ def test_single_threaded_sets_inner_estimators():
     assert phys.model.pipe[-1].n_jobs == 1
 
 
+def test_random_forest_gives_identical_predictions_from_run_to_run():
+    rng = np.random.default_rng(0)
+    X = pd.DataFrame(rng.normal(size=(600, 4)), columns=list("abcd"))
+    X["y"] = 2 * X["a"] + np.sin(X["b"]) + rng.normal(0, 0.1, 600)
+    preds = []
+    for _ in range(3):
+        m = T.random_forest(n_estimators=80)
+        m.features = list("abcd")
+        preds.append(m.fit(X, "y").predict(X))
+    assert m.pipe[-1].n_jobs == 1                       # trees are summed in a fixed order when predicting
+    assert all(np.array_equal(p, preds[0]) for p in preds)
+
+
 def test_search_configs_are_distinct_valid_and_reproducible():
     a = T.sample_configs("xgboost", 30, seed=42)
     assert a == T.sample_configs("xgboost", 30, seed=42)

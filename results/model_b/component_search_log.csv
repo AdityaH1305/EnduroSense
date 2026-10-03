@@ -7,14 +7,14 @@ leg_power,Linear Regression,"{""alpha"": 10.0}",18.431535717143923
 leg_power,Linear Regression,"{""alpha"": 100.0}",20.180357313537087
 leg_power,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 20, ""max_features"": 0.5, ""max_samples"": 0.3}",24.416000668526664
 leg_power,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 20, ""max_features"": 0.3, ""max_samples"": 0.5}",28.203722093698662
-leg_power,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 2, ""max_features"": 0.5, ""max_samples"": 0.5}",19.956246324846592
+leg_power,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 2, ""max_features"": 0.5, ""max_samples"": 0.5}",19.956246324846582
 leg_power,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 20, ""max_features"": 0.8, ""max_samples"": 0.5}",19.542771669746354
 leg_power,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 2, ""max_features"": 0.8, ""max_samples"": 0.3}",19.23323330083783
-leg_power,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.3, ""max_samples"": 0.5}",23.05822581959172
-leg_power,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 10, ""max_features"": 0.5, ""max_samples"": 0.5}",20.05907701251183
+leg_power,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.3, ""max_samples"": 0.5}",23.058225819591723
+leg_power,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 10, ""max_features"": 0.5, ""max_samples"": 0.5}",20.059077012511835
 leg_power,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.5, ""max_samples"": 0.3}",19.66228463861724
-leg_power,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 10, ""max_features"": 0.8, ""max_samples"": 0.3}",19.14952568245658
-leg_power,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 20, ""max_features"": 0.3, ""max_samples"": 0.5}",28.203722093698673
+leg_power,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 10, ""max_features"": 0.8, ""max_samples"": 0.3}",19.149525682456584
+leg_power,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 20, ""max_features"": 0.3, ""max_samples"": 0.5}",28.203722093698662
 leg_power,XGBoost,"{""n_estimators"": 200, ""max_depth"": 8, ""learning_rate"": 0.05, ""subsample"": 0.8, ""colsample_bytree"": 0.8, ""min_child_weight"": 20, ""reg_lambda"": 0.1}",20.261495809482703
 leg_power,XGBoost,"{""n_estimators"": 800, ""max_depth"": 3, ""learning_rate"": 0.02, ""subsample"": 0.8, ""colsample_bytree"": 1.0, ""min_child_weight"": 20, ""reg_lambda"": 10.0}",19.194615085214842
 leg_power,XGBoost,"{""n_estimators"": 800, ""max_depth"": 8, ""learning_rate"": 0.05, ""subsample"": 0.6, ""colsample_bytree"": 1.0, ""min_child_weight"": 5, ""reg_lambda"": 1.0}",21.908498790875065
@@ -43,13 +43,13 @@ leg_overhead,Linear Regression,"{""alpha"": 10.0}",0.5026983659528028
 leg_overhead,Linear Regression,"{""alpha"": 100.0}",0.5393983075302101
 leg_overhead,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 20, ""max_features"": 0.5, ""max_samples"": 0.3}",0.70213589032401
 leg_overhead,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 20, ""max_features"": 0.3, ""max_samples"": 0.5}",0.831568195162706
-leg_overhead,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 2, ""max_features"": 0.5, ""max_samples"": 0.5}",0.478948366390784
-leg_overhead,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 20, ""max_features"": 0.8, ""max_samples"": 0.5}",0.5050893379868705
+leg_overhead,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 2, ""max_features"": 0.5, ""max_samples"": 0.5}",0.47894836639078403
+leg_overhead,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 20, ""max_features"": 0.8, ""max_samples"": 0.5}",0.5050893379868704
 leg_overhead,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 2, ""max_features"": 0.8, ""max_samples"": 0.3}",0.47685391419115175
 leg_overhead,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.3, ""max_samples"": 0.5}",0.6204072956459782
-leg_overhead,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 10, ""max_features"": 0.5, ""max_samples"": 0.5}",0.5191049470574618
+leg_overhead,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 10, ""max_features"": 0.5, ""max_samples"": 0.5}",0.5191049470574617
 leg_overhead,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.5, ""max_samples"": 0.3}",0.5063990738015312
-leg_overhead,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 10, ""max_features"": 0.8, ""max_samples"": 0.3}",0.4908485555000418
+leg_overhead,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 10, ""max_features"": 0.8, ""max_samples"": 0.3}",0.4908485555000417
 leg_overhead,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 20, ""max_features"": 0.3, ""max_samples"": 0.5}",0.831568195162706
 leg_overhead,XGBoost,"{""n_estimators"": 200, ""max_depth"": 8, ""learning_rate"": 0.05, ""subsample"": 0.8, ""colsample_bytree"": 0.8, ""min_child_weight"": 20, ""reg_lambda"": 0.1}",0.496651772952447
 leg_overhead,XGBoost,"{""n_estimators"": 800, ""max_depth"": 3, ""learning_rate"": 0.02, ""subsample"": 0.8, ""colsample_bytree"": 1.0, ""min_child_weight"": 20, ""reg_lambda"": 10.0}",0.484248284891973
@@ -78,14 +78,14 @@ climb,Linear Regression,"{""alpha"": 1.0}",0.23133960663786235
 climb,Linear Regression,"{""alpha"": 10.0}",0.24170614177355843
 climb,Linear Regression,"{""alpha"": 100.0}",0.6685178073889224
 climb,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 20, ""max_features"": 0.5, ""max_samples"": 0.3}",1.4511332993529495
-climb,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 20, ""max_features"": 0.3, ""max_samples"": 0.5}",1.1011201155736936
-climb,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 2, ""max_features"": 0.5, ""max_samples"": 0.5}",0.4408248309597262
+climb,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 20, ""max_features"": 0.3, ""max_samples"": 0.5}",1.1011201155736934
+climb,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 2, ""max_features"": 0.5, ""max_samples"": 0.5}",0.4408248309597263
 climb,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 20, ""max_features"": 0.8, ""max_samples"": 0.5}",0.8493898868007419
-climb,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 2, ""max_features"": 0.8, ""max_samples"": 0.3}",0.28361003939465884
-climb,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.3, ""max_samples"": 0.5}",0.6273323234755575
+climb,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 2, ""max_features"": 0.8, ""max_samples"": 0.3}",0.2836100393946588
+climb,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.3, ""max_samples"": 0.5}",0.6273323234755576
 climb,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 10, ""max_features"": 0.5, ""max_samples"": 0.5}",0.8211423608438018
-climb,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.5, ""max_samples"": 0.3}",0.7446707750628971
-climb,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 10, ""max_features"": 0.8, ""max_samples"": 0.3}",0.764044668648678
+climb,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.5, ""max_samples"": 0.3}",0.7446707750628969
+climb,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 10, ""max_features"": 0.8, ""max_samples"": 0.3}",0.7640446686486781
 climb,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 20, ""max_features"": 0.3, ""max_samples"": 0.5}",1.1011201155736934
 climb,XGBoost,"{""n_estimators"": 200, ""max_depth"": 8, ""learning_rate"": 0.05, ""subsample"": 0.8, ""colsample_bytree"": 0.8, ""min_child_weight"": 20, ""reg_lambda"": 0.1}",0.25272133871499514
 climb,XGBoost,"{""n_estimators"": 800, ""max_depth"": 3, ""learning_rate"": 0.02, ""subsample"": 0.8, ""colsample_bytree"": 1.0, ""min_child_weight"": 20, ""reg_lambda"": 10.0}",0.24524715833843747
@@ -113,16 +113,16 @@ descent,Linear Regression,"{""alpha"": 0.1}",0.3555383162959495
 descent,Linear Regression,"{""alpha"": 1.0}",0.35563920816722894
 descent,Linear Regression,"{""alpha"": 10.0}",0.37251468634503737
 descent,Linear Regression,"{""alpha"": 100.0}",0.681838793984437
-descent,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 20, ""max_features"": 0.5, ""max_samples"": 0.3}",1.314251487287523
+descent,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 20, ""max_features"": 0.5, ""max_samples"": 0.3}",1.3142514872875233
 descent,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 20, ""max_features"": 0.3, ""max_samples"": 0.5}",1.0678329933228055
-descent,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 2, ""max_features"": 0.5, ""max_samples"": 0.5}",0.48836041740262665
-descent,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 20, ""max_features"": 0.8, ""max_samples"": 0.5}",0.8861763997518954
+descent,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 2, ""max_features"": 0.5, ""max_samples"": 0.5}",0.4883604174026267
+descent,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 20, ""max_features"": 0.8, ""max_samples"": 0.5}",0.8861763997518957
 descent,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 2, ""max_features"": 0.8, ""max_samples"": 0.3}",0.3781436541894815
-descent,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.3, ""max_samples"": 0.5}",0.6596020940754633
-descent,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 10, ""max_features"": 0.5, ""max_samples"": 0.5}",0.8338729783613458
+descent,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.3, ""max_samples"": 0.5}",0.6596020940754636
+descent,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 10, ""max_features"": 0.5, ""max_samples"": 0.5}",0.8338729783613459
 descent,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.5, ""max_samples"": 0.3}",0.7609135313757666
 descent,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 10, ""max_features"": 0.8, ""max_samples"": 0.3}",0.7629824837683765
-descent,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 20, ""max_features"": 0.3, ""max_samples"": 0.5}",1.0678329933228052
+descent,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 20, ""max_features"": 0.3, ""max_samples"": 0.5}",1.0678329933228055
 descent,XGBoost,"{""n_estimators"": 200, ""max_depth"": 8, ""learning_rate"": 0.05, ""subsample"": 0.8, ""colsample_bytree"": 0.8, ""min_child_weight"": 20, ""reg_lambda"": 0.1}",0.3304809130296817
 descent,XGBoost,"{""n_estimators"": 800, ""max_depth"": 3, ""learning_rate"": 0.02, ""subsample"": 0.8, ""colsample_bytree"": 1.0, ""min_child_weight"": 20, ""reg_lambda"": 10.0}",0.3268057897110389
 descent,XGBoost,"{""n_estimators"": 800, ""max_depth"": 8, ""learning_rate"": 0.05, ""subsample"": 0.6, ""colsample_bytree"": 1.0, ""min_child_weight"": 5, ""reg_lambda"": 1.0}",0.37393855182446617
@@ -150,11 +150,11 @@ hover,Linear Regression,"{""alpha"": 1.0}",0.21033180548923008
 hover,Linear Regression,"{""alpha"": 10.0}",0.21018929984562917
 hover,Linear Regression,"{""alpha"": 100.0}",0.21093710463792292
 hover,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 20, ""max_features"": 0.5, ""max_samples"": 0.3}",0.2340489361922033
-hover,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 20, ""max_features"": 0.3, ""max_samples"": 0.5}",0.22854612005581426
+hover,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 20, ""max_features"": 0.3, ""max_samples"": 0.5}",0.22854612005581423
 hover,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 2, ""max_features"": 0.5, ""max_samples"": 0.5}",0.22551454108592078
 hover,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 20, ""max_features"": 0.8, ""max_samples"": 0.5}",0.22728555904627532
 hover,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 2, ""max_features"": 0.8, ""max_samples"": 0.3}",0.2278624768235069
-hover,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.3, ""max_samples"": 0.5}",0.22118406887870795
+hover,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.3, ""max_samples"": 0.5}",0.2211840688787079
 hover,Random Forest,"{""max_depth"": 20, ""min_samples_leaf"": 10, ""max_features"": 0.5, ""max_samples"": 0.5}",0.22112816317296424
 hover,Random Forest,"{""max_depth"": 12, ""min_samples_leaf"": 5, ""max_features"": 0.5, ""max_samples"": 0.3}",0.21961669492230565
 hover,Random Forest,"{""max_depth"": null, ""min_samples_leaf"": 10, ""max_features"": 0.8, ""max_samples"": 0.3}",0.22132415388167423

@@ -6,7 +6,7 @@ from scipy.stats import norm
 
 from endurosense import whatif as W
 from endurosense.feasibility import decide, p_success, p_success_batch
-from endurosense.scheduler import Battery, FleetSimulator, batteries_from
+from endurosense.scheduler import Battery, FleetSimulator, batteries_from, choose_drone
 from endurosense.uncertainty.quantiles import PredictiveDistribution
 
 LEVELS = np.array([0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99])
@@ -90,7 +90,7 @@ def toy_world(n_chains=6, seed=0):
     q_a = pd.DataFrame(normal_q(a["remaining_wh"], np.full(len(a), 2.0)), index=a.index)
     true = rng.uniform(5, 25, 40)
     missions = pd.DataFrame({"flights": [(i,) for i in range(40)], "sorties": 1, "fold": np.arange(40) % 2,
-                             "true_wh": true, "duration_min": true / 400 * 60})
+                             "battery_chain": np.arange(40) % n_chains, "true_wh": true, "duration_min": true / 400 * 60})
     return a, q_a, missions, normal_q(true, np.full(40, 0.5))
 
 
@@ -104,6 +104,55 @@ def test_states_and_pairs():
     assert (pairs["feasible"] == (pairs["true_margin_wh"] >= 0)).all()
     assert (a.loc[pairs["state"], "remaining_wh"].to_numpy() == pairs["available_wh"].to_numpy()).all()
     assert 0.2 < pairs["feasible"].mean() < 0.95                       # both outcomes present
+    assert (missions["battery_chain"].to_numpy()[pairs["mission"]] == pairs["mission_chain"].to_numpy()).all()
+
+
+def test_multi_sortie_missions_are_real_same_battery_flights_with_one_shared_error():
+    # 3 batteries: flights (1, 2, 3), (4, 5) and (6,); two folds
+    idx = pd.Index([1, 2, 3, 4, 5, 6], name="flight")
+    chain, fold = [10, 10, 10, 20, 20, 30], [0, 0, 0, 1, 1, 1]
+    parts = pd.DataFrame({"pred_climb": 2.0, "pred_descent": 1.0, "pred_hover": 0.5, "pred_legs": [10.0, 12, 14, 16, 18, 20],
+                          "pred_ground": 0.5, "err_climb": [0.1, -0.1, 0.2, 0.0, 0.3, -0.2], "err_descent": 0.0, "err_hover": 0.0,
+                          "err_ground": 0.0, "err_legs_rel": [0.05, -0.05, 0.02, 0.1, -0.1, 0.0], "err_total_rel": 0.0,
+                          "err_battery_chain": chain, "fold": fold}, index=idx)
+    fb = pd.DataFrame({"flight": idx, "total_wh": parts.filter(like="pred_").sum(axis=1).to_numpy() + 0.3,
+                       "climb_s": 20.0, "cruise_s": 100.0, "descent_s": 20.0, "hover_s": 10.0})
+    missions, q = W.build_missions(parts, fb, LEVELS)
+    assert missions["flights"].iloc[:6].tolist() == [(i,) for i in idx]                 # single flights first, in order
+    multi = missions[missions.sorties > 1]
+    assert sorted(multi["flights"]) == [(1, 2), (1, 2, 3), (1, 3), (2, 3), (4, 5)]      # only flights that shared a battery
+    assert q.shape == (len(missions), len(LEVELS)) and (np.diff(q, axis=1) >= 0).all()
+    m = missions[missions["flights"] == (4, 5)].iloc[0]
+    assert m["true_wh"] == pytest.approx(fb.set_index("flight").loc[[4, 5], "total_wh"].sum())
+    assert m["duration_min"] == pytest.approx(2 * 150 / 60) and m["battery_chain"] == 20 and m["fold"] == 1
+    # one shared error set: the two-sortie range is as wide as the two single ranges added, not narrower
+    width = lambda i: q[i, -1] - q[i, 0]
+    pos = {f: i for i, f in enumerate(missions["flights"])}
+    assert width(pos[(4, 5)]) == pytest.approx(width(pos[(4,)]) + width(pos[(5,)]), rel=1e-6)
+
+
+def test_preflight_state_is_the_last_reading_before_take_off_and_typical_power_comes_from_other_folds():
+    a = pd.DataFrame({"flight": 1, "battery_chain": 1, "time": [0.0, 1, 2, 3, 4, 5], "motors_on": [0, 0, 0, 1, 1, 0],
+                      "p": [10.0, 10, 10, 100, 100, 10], "fold": 0})
+    b = a.assign(flight=2, battery_chain=2, fold=1, p=[10.0, 10, 10, 300, 300, 10])
+    both = pd.concat([a, b], ignore_index=True)
+    pre = W.preflight_states(both)
+    assert pre["time"].tolist() == [2.0, 2.0]                          # not the first reading, not the one after landing
+    assert W.typical_power_by_fold(both).to_dict() == {0: 300.0, 1: 100.0}
+
+
+def test_bootstrap_reweights_the_battery_side_and_the_mission_side():
+    chains = np.arange(5)
+    pairs = pd.DataFrame([(a, b) for a in chains for b in chains], columns=["battery_chain", "mission_chain"])
+    pairs["feasible"] = np.arange(len(pairs)) % 2 == 0
+    n = 0
+    for keep, w in W._chain_resamples(pairs, 30, seed=0):
+        full = pd.Series(0.0, index=pairs.index); full[keep] = w
+        times = {c: np.sqrt(full[(pairs.battery_chain == c) & (pairs.mission_chain == c)].iloc[0]) for c in chains}   # (c, c) pair
+        expected = pairs["battery_chain"].map(times) * pairs["mission_chain"].map(times)
+        assert np.allclose(full, expected) and sum(times.values()) == len(chains)
+        n += 1
+    assert n > 20
 
 
 def test_policies_on_a_world_where_the_models_are_right():
@@ -120,6 +169,7 @@ def test_policies_on_a_world_where_the_models_are_right():
     assert sc["P1"].to_numpy() == pytest.approx((pairs["available_wh"] / pairs["required_wh"]).to_numpy(), rel=1e-9)
     t = W.summary_table(sc, pairs, n_boot=20)
     assert t["auc"].min() > 0.999 and set(t["policy"]) == set(W.POLICIES.values())
+    assert (t["auc_ci_low"] <= t["auc"]).all() and (t["auc"] <= t["auc_ci_high"]).all()
     g = W.paired_gain(sc, pairs, "P4", "P1", n_boot=20).set_index("metric")
     assert (g["gain"] >= 0).all() and (g["ci_low"] <= g["gain"]).all() and (g["gain"] <= g["ci_high"]).all()
     assert (W.paired_gain(sc, pairs, "P2", "P2", n_boot=5)["gain"] == 0).all()        # a policy against itself
@@ -146,6 +196,32 @@ def test_batteries_follow_their_chain():
     late = a[a["battery_chain"] == 0].assign(motors_on=lambda d: (d["e_chain_wh"] >= 4).astype(int))
     start = batteries_from(late)[0].row_at(0.0)
     assert late.loc[start, "e_chain_wh"] == 3 and late.loc[start, "motors_on"] == 0
+    assert batteries_from(late)[0].e_res == 67.0 and batteries_from(late)[0].e[0] == 0     # measured from that reading
+
+
+def test_best_fit_assignment():
+    score, energy = np.array([0.99, 0.2, 0.97, 0.96]), np.array([60.0, 5.0, 30.0, 45.0])
+    assert choose_drone(score, energy, 0.95) == 2                       # the emptiest of the approved drones
+    assert choose_drone(score, energy, 0.98) == 0
+    assert choose_drone(score, energy, 0.999) is None
+
+
+def test_fleet_bookkeeping_on_a_case_worked_out_by_hand():
+    # one drone; every battery has exactly 70 Wh above the reserve and 80 Wh of recording; tasks cost exactly 20 Wh
+    a, q_a, _, _ = toy_world()
+    missions = pd.DataFrame({"flights": [(0,), (1,)], "sorties": 1, "fold": 0, "battery_chain": 0,
+                             "true_wh": [20.0, 100.0], "duration_min": [3.0, 15.0]})
+    sim = FleetSimulator(batteries_from(a), a, q_a, missions, normal_q(missions["true_wh"], [0.5, 0.5]), LEVELS,
+                         W.typical_power_by_fold(a), n_drones=1)
+    day = lambda policy, thr, task: sim.run(policy, thr, days=1, tasks_per_day=30, task_pool=np.array([task]), seed=0).iloc[0]
+    oracle = day("P4", 0.0, 0)                 # 3 tasks per battery (60 Wh), the 4th would need 80 > 70: swap first
+    assert (oracle["completed"], oracle["unsafe"], oracle["dropped"], oracle["swaps"]) == (30, 0, 0, 9)
+    assert oracle["leftover_wh"] == pytest.approx(10.0)
+    reckless = day("P2", -1e9, 0)              # flies the 4th task into the reserve, then the recording runs out
+    assert (reckless["completed"], reckless["unsafe"], reckless["dropped"], reckless["swaps"]) == (30, 7, 0, 7)
+    assert reckless["leftover_wh"] == 0.0
+    too_big = day("P4", 0.0, 1)                # 100 Wh fits no battery: swap, ask again, drop
+    assert (too_big["completed"], too_big["unsafe"], too_big["dropped"], too_big["swaps"]) == (0, 0, 30, 30)
 
 
 def test_fleet_simulation_safety_and_bookkeeping():

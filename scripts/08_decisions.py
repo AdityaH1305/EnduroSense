@@ -4,7 +4,8 @@ Usage: python scripts/08_decisions.py     (about 3 minutes; development data onl
 Needs the held-out distributions written by scripts/07_uncertainty.py.
 
 1. Independence check: are the battery model's and the mission model's errors
-   related? (The feasibility probability assumes they are not.)
+   related, and is the predicted margin honest on real (battery, own flight) pairs?
+   (The feasibility probability assumes the two errors are independent.)
 2. What-if evaluation: real held-out battery states paired with real held-out
    missions; four policies compared on unsafe approvals vs wasted refusals,
    over all pairs, borderline pairs and pre-flight states only.
@@ -18,10 +19,12 @@ import json
 
 import numpy as np
 import pandas as pd
+from scipy.stats import spearmanr
 
 from endurosense.config import data_path, load_config, set_seed
 from endurosense.data.load import load_processed
 from endurosense.data.split import DEV, select
+from endurosense.feasibility import p_success_batch
 from endurosense.plots import INK_MUTED, SERIES, apply_style, plt, save
 from endurosense.scheduler import FleetSimulator, batteries_from
 from endurosense import whatif as W
@@ -67,23 +70,35 @@ def main() -> None:
     # held-out missions -----------------------------------------------------------
     parts = pd.read_parquet(UNC / "model_b_oof_parts.parquet")
     fb = select(pd.read_parquet(data_path("features") / "model_b_flights.parquet"), DEV)
-    missions, q_b = W.build_missions(parts, fb, levels, rng)
+    missions, q_b = W.build_missions(parts, fb, levels)
     print(f"{len(states):,} battery states ({len(pre)} pre-flight) from {a['battery_chain'].nunique()} chains; "
           f"{len(missions)} missions ({(missions.sorties == 1).sum()} single flights, {(missions.sorties > 1).sum()} multi-sortie)", flush=True)
 
     # 1. independence of the two models' errors -------------------------------------
     mid = int(np.argmin(np.abs(levels - 0.5)))
     both = pre[pre["flight"].isin(parts.index)]                    # the battery just before the flight it then flew
-    err_a = q_a.loc[both.index].to_numpy()[:, mid] - both["remaining_wh"].to_numpy()
-    single = missions[missions.sorties == 1].assign(flight=lambda d: d["flights"].str[0]).set_index("flight")
-    err_b = q_b[single.loc[both["flight"]].index.map(lambda f: single.index.get_loc(f)), mid] - single.loc[both["flight"], "true_wh"].to_numpy()
+    own = pd.Series(np.arange(len(parts)), index=parts.index)[both["flight"]].to_numpy()   # single-flight missions come first
+    qa_own, qb_own = q_a.loc[both.index].to_numpy(), q_b[own]
+    true_a, true_b = both["remaining_wh"].to_numpy(), missions["true_wh"].to_numpy()[own]
+    err_a, err_b = qa_own[:, mid] - true_a, qb_own[:, mid] - true_b
     corr = float(np.corrcoef(err_a, err_b)[0, 1])
     boot = [np.corrcoef(err_a[i], err_b[i])[0, 1] for i in (rng.integers(0, len(err_a), len(err_a)) for _ in range(2000))]
+    rank = spearmanr(err_a, err_b)
+    # where the true margin falls in the predicted margin distribution: P(A - B <= truth) = 1 - P(A >= B + truth)
+    pit = 1.0 - p_success_batch(qa_own, qb_own + (true_a - true_b)[:, None], levels)
     indep = {"flights": int(len(both)), "correlation": corr, "ci_low": float(np.percentile(boot, 2.5)),
-             "ci_high": float(np.percentile(boot, 97.5))}
+             "ci_high": float(np.percentile(boot, 97.5)), "rank_correlation": float(rank.statistic), "rank_p_value": float(rank.pvalue),
+             "battery_error_sd_wh": float(err_a.std()), "mission_error_sd_wh": float(err_b.std()),
+             "margin_error_sd_if_independent_wh": float(np.hypot(err_a.std(), err_b.std())),
+             "margin_error_sd_actual_wh": float((err_a - err_b).std()),
+             "margin_90_range_covers": float(np.mean((pit >= 0.05) & (pit <= 0.95))),
+             "margin_truth_below_90_range": float(np.mean(pit < 0.05))}
     (OUT / "error_independence.json").write_text(json.dumps(indep, indent=1))
     print(f"error correlation (battery model vs mission model, {indep['flights']} real flights): "
-          f"{corr:+.3f} [{indep['ci_low']:+.3f}, {indep['ci_high']:+.3f}]", flush=True)
+          f"{corr:+.3f} [{indep['ci_low']:+.3f}, {indep['ci_high']:+.3f}], rank {rank.statistic:+.3f} (p = {rank.pvalue:.3f})\n"
+          f"  margin error spread {indep['margin_error_sd_actual_wh']:.2f} Wh (independence would give "
+          f"{indep['margin_error_sd_if_independent_wh']:.2f}); 90% range of the margin covers "
+          f"{indep['margin_90_range_covers']:.1%}, truth below it {indep['margin_truth_below_90_range']:.1%}", flush=True)
 
     # 2. what-if evaluation --------------------------------------------------------------
     sets = {}

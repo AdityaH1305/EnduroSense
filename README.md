@@ -81,3 +81,4 @@ The settings still waiting on guide review live in `config.yaml`:
 
 - `battery.reserve_v`: 22.6 V rest voltage (about 3.77 V per cell)
 - `decision.tau`: 0.95
+- `uncertainty.interval`: 0.90 (the headline range)

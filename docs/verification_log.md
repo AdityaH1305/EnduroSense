@@ -76,3 +76,42 @@ The full detail is in [data_report.md](data_report.md) §0.
 
 - `pytest`: **74 passed**.
 - `pyflakes`: clean.
+
+## Pass 4: Phases 5–6, with a sweep of Phases 1–4 (2026-10-03)
+
+| # | Found | Severity | Fix |
+|---|---|---|---|
+| 1 | **Multi-sortie missions assumed each sortie's error was independent.** Model B's errors are shared within a battery (about 46% of the error variance). On real back-to-back flights the "90%" ranges built that way covered only 81–85%. Phase 6 also built its multi-sortie missions from random flights, which is not how such a mission is flown | Medium | `replay_compound` applies one shared error set to all sorties (94–98% coverage, cautious). Multi-sortie missions are now every pair and triple of flights that really shared a battery. All Phase 6 numbers regenerated; conclusions unchanged |
+| 2 | **Confidence intervals in Phase 6 only resampled the battery side of a pair.** The same flights appear in many pairs on the mission side, so the intervals were too narrow | Medium (reporting) | One resample of battery chains now reweights both sides. The gain over point estimates on borderline cases went from "significant" to "likely" (interval −0.9 to +14.1 points); the gain at pre-flight states is still clear |
+| 3 | **"Not distinguishable from zero" was too strong** for the link between the two models' errors: the rank correlation is +0.27 (p = 0.003) | Low | Reported as a small positive link that barely matters (the mission error is five times smaller than the battery error) and is on the safe side. A direct check was added: on 120 real battery/flight pairs the 90% range of the margin covers 92.5% |
+| 4 | **Weighted quantiles depended on floating-point rounding at exact ties.** With group weights such as 1/2 and 1/3 a cumulative weight can land exactly on the target; rounding of the running sum then picked the next value up (found by recomputing with separate code: up to 0.09 Wh in a few Model B quantiles) | Low | A cumulative weight that equals the target up to rounding now counts as reaching it; test added. Model A unchanged; Model B's headline coverage and width unchanged |
+| 5 | **Random Forest results differed in the 15th digit from run to run** (trees summed across threads in a varying order), so Phase 4 tables changed on disk at every run. Pass 3's "repeated runs give identical tables" was true only to printed precision | Low | Trees are still fitted in parallel but summed in a fixed order when predicting; test added. Two runs of `06_model_b.py` are now byte-identical |
+| 6 | The fleet simulator measured a battery's energy from the start of its recording, not from its starting (pre-flight) reading: an offset of up to 0.06 Wh | Low | Energy is measured from the starting reading |
+| 7 | `uncertainty.interval` (the headline 90% level, pending guide review) was never read by any code | Low | It is now the default of `PredictiveDistribution.interval()` and of the per-subgroup coverage tables |
+| 8 | **Mutation testing: 13 of 33 deliberate bugs in the Phase 5–6 code were not caught by any test** (fleet bookkeeping, leave-fold-out guards, abstention, tie handling, ensemble spread) | Medium (latent) | 11 tests added; all 33 are now caught |
+
+### Checked and confirmed correct (no change needed)
+
+- **Every Phase 5 headline number recomputed with separate code** from the saved held-out predictions: Model A 89.5% coverage, 11.2 Wh width, truth below the range 3.7%, point error 2.34 Wh; Model B 91.5%, 2.10 Wh, 2.35%. The leave-fold-out calibration was rebuilt independently and matches to 0.0 Wh.
+- **GPU training is reproducible.** Retraining the 5-GRU ensemble over all 5 folds from scratch reproduced the cached held-out means and spreads exactly (largest difference 0.0).
+- **P(success)** agrees with brute-force sampling (200,000 draws) on 300 uncertain real pairs to within 0.0025.
+- **Operating points recomputed from the saved pairs** match the tables; the matched-margin search agrees with the full, undropped ROC curve.
+- **A mission's energy and a battery's energy drop are the same quantity:** Model B's flight total equals the flights table exactly and the battery-side energy to within 0.02 Wh.
+- **Folds agree across models:** a chain is in the same fold for Model A and Model B, and no chain is in two folds.
+- **Robust to the random draw:** six other seeds for the pairs give the same pattern.
+- **Phases 0–2 rebuild to identical tables** (content hashes of all 8 tables), and the split rebuilds to the same hash.
+- **No test-set access:** no script or module passes `final=True`.
+- **Notes against result files:** every decimal number in the Phase 3, 4 and 5 notes traces to a results file (the exceptions are documented one-off experiments).
+- **Saved calibrated models** load from disk and reproduce their ranges (tests).
+
+### Known, not changed
+
+- The Phase 3 comparison cache is stale because its fingerprint definition changed in Phase 5. The code it covers has not changed; Phase 7's `run_all.py` regenerates it (about 1 hour).
+- Multi-sortie ranges are deliberately cautious (94–98% for a nominal 90%).
+
+### Status after pass 4
+
+- `pytest`: **109 passed**.
+- `pyflakes`: clean.
+- `06_model_b.py`, `07_uncertainty.py` and `08_decisions.py` each give byte-identical outputs on a second run.
+

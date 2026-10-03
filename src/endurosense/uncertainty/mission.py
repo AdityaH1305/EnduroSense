@@ -62,18 +62,16 @@ def quantiles_from_replay(totals: np.ndarray, groups, levels, correction: str | 
     return conformal_quantiles(totals, groups, levels, correction)
 
 
-def replay_compound(parts_list: list[dict], tuples: pd.DataFrame, n: int, rng: np.random.Generator,
-                    method: str = "parts") -> np.ndarray:
-    """Totals for a mission made of several sorties flown one after another.
+def replay_compound(parts_list: list[dict], tuples: pd.DataFrame, method: str = "parts") -> np.ndarray:
+    """Totals for a mission made of several sorties flown one after another on one battery.
 
-    Each sortie gets its own, independently drawn, held-out error set (the errors
-    of different flights are not tied together), and the sorties are added up.
+    Every sortie gets the *same* held-out error set: one total per calibration flight,
+    as for a single mission. Flights on one battery are flown the same day in the same
+    conditions and their errors move together (on development data about 46% of the
+    error variance is shared within a battery). Measured on real same-battery flights,
+    independent draws gave "90%" ranges covering 81-85%; a shared error set covers 90-95%.
     """
-    total = np.zeros(n)
-    for parts in parts_list:
-        idx = rng.integers(0, len(tuples), n)
-        total += replay(parts, tuples.iloc[idx], method)
-    return total
+    return np.sum([replay(parts, tuples, method) for parts in parts_list], axis=0)
 
 
 def oof_parts(make_predictor, flights: pd.DataFrame, legs: pd.DataFrame, folds) -> tuple[pd.DataFrame, pd.Series]:
