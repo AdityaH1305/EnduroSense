@@ -158,6 +158,8 @@ EnduroSense/
 
 ## Phase 4: Model B comparison (Weeks 4–5)
 
+> **Status: complete (2026-10-03).** See `docs/phase_notes/phase4_model_b.md`. Missions are predicted to within 2.3–2.8% (0.49–0.60 Wh) by every family except Random Forest (3.4%); the naive average-flight baseline gives 19.6%. The main Model B is "best component each" (2.34%). Tree models can't extrapolate to unseen altitudes or payloads (9–14% error) while physics-shaped models stay at 2.5–3.5%. The R5 distance test is confounded with the first flying day, so the unseen-distance test moves to R6 in Phase 7. The airframe mass is constrained to the M100's spec range.
+
 - **Physics baseline:** a rotor momentum-theory power model (induced + profile + parasitic), with 3–4 coefficients and the base mass fitted by `scipy.optimize.least_squares`.
 - **Models:** Ridge, RF and XGB for each phase target, plus a **physics-hybrid** (XGB trained on the physics model's residual).
   - **LSTM and GRU are not used for Model B**, because its inputs are fixed mission settings rather than a time series. The report states this reasoning; the brief's five-algorithm comparison is carried out on Model A.

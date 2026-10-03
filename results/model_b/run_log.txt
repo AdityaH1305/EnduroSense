@@ -1,0 +1,45 @@
+dev: 153 flights, 461 legs
+component search (grouped CV MAE: W for leg power, s for leg overhead, Wh otherwise)
+  leg_power    Physics: 22.287  Linear Regression: 18.375  Random Forest: 19.150  XGBoost: 19.195  Physics + XGBoost: 18.905
+  leg_overhead Physics: 0.487  Linear Regression: 0.503  Random Forest: 0.477  XGBoost: 0.484  Physics + XGBoost: 0.469
+  climb        Physics: 0.203  Linear Regression: 0.231  Random Forest: 0.284  XGBoost: 0.222  Physics + XGBoost: 0.204
+  descent      Physics: 0.335  Linear Regression: 0.356  Random Forest: 0.378  XGBoost: 0.316  Physics + XGBoost: 0.309
+  hover        Physics: 0.209  Linear Regression: 0.210  Random Forest: 0.220  XGBoost: 0.225  Physics + XGBoost: 0.217
+
+components (CV MAE):
+              Physics  Linear Regression  Random Forest  XGBoost  Physics + XGBoost
+component                                                                          
+leg_power      22.287             18.375         19.150   19.195             18.905
+leg_overhead    0.487              0.503          0.477    0.484              0.469
+climb           0.203              0.231          0.284    0.222              0.204
+descent         0.335              0.356          0.378    0.316              0.309
+hover           0.209              0.210          0.220    0.225              0.217
+
+missions:
+                 model  mae_wh  mape_pct  rmse_wh     r2  bias_wh  vs_physics_diff  vs_physics_ci_low  vs_physics_ci_high
+   Best component each   0.489     2.342    0.681  0.979   -0.046           -0.085             -0.160              -0.007
+     Physics + XGBoost   0.503     2.414    0.688  0.979   -0.034           -0.070             -0.125              -0.013
+               XGBoost   0.520     2.472    0.706  0.978    0.001           -0.053             -0.132               0.024
+               Physics   0.574     2.679    0.797  0.972    0.020            0.000              0.000               0.000
+     Linear Regression   0.599     2.841    0.802  0.971   -0.040            0.025             -0.055               0.109
+         Random Forest   0.718     3.423    0.966  0.958   -0.008            0.144              0.031               0.263
+Average flight (naive)   3.906    19.633    4.732 -0.005    0.001            3.333              2.902               3.790
+
+generalisation (MAPE %):
+test                 R5 route = day 1 (4 flights)  unseen altitude  unseen day  unseen payload  unseen speed
+model                                                                                                       
+Best component each                          5.68             2.58        2.32            2.52          2.64
+Linear Regression                            3.89             3.40        2.89            3.35          3.10
+Physics                                      8.53             2.87        2.71            3.49          3.30
+Physics + XGBoost                            7.36             2.56        2.38            3.11          3.10
+Random Forest                                7.00            13.98        3.13            9.61          3.60
+XGBoost                                      5.18            13.99        2.49            9.34          3.28
+
+example missions (Wh):
+                                                Physics  Linear Regression  Random Forest  XGBoost  Physics + XGBoost  Best component each
+mission                                                                                                                                   
+Delivery 300 m, 500 g, 8 m/s, 50 m                19.81              20.54          20.84    20.82              20.37                20.54
+Delivery 600 m, 500 g, 8 m/s, 50 m                30.07              31.61          31.46    31.39              31.20                31.50
+Delivery 300 m, 500 g, 12 m/s, 100 m              23.11              23.14          23.46    23.75              23.51                23.35
+Delivery 300 m, 0 g, 4 m/s, 25 m                  26.34              24.90          26.19    26.00              25.73                24.97
+R1-like loop 140/198/119 m, 250 g, 8 m/s, 50 m    18.16              18.56          18.75    18.96              18.60                18.70
