@@ -41,7 +41,7 @@ python scripts/02_prepare_data.py   # Phase 1 cleaned tables -> data/processed/{
 python scripts/03_make_split.py     # Phase 1 locked train/test split -> data/splits/split_v2.json (never overwritten)
 python scripts/04_build_features.py # Phase 2 Model A labels/features + Model B leg & flight targets -> data/features/
 python scripts/05_model_a.py        # Phase 3 Model A comparison (baselines + 5 algorithms, ~1 h, cached) -> results/model_a/
-python scripts/06_model_b.py        # Phase 4 Model B: components, missions, generalisation (~4 min) -> results/model_b/
+python scripts/06_model_b.py        # Phase 4 Model B: components, missions, generalisation (~6 min) -> results/model_b/, models/model_b/model_b.pkl
 ```
 
 Test data is locked: `endurosense.data.split.select(df, "test")` raises unless `final=True`. It is only used in the final evaluation.

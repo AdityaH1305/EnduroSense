@@ -1,0 +1,6 @@
+fold,leg_power,leg_overhead,climb,descent,hover
+0,Physics + XGBoost,Physics + XGBoost,Physics,Physics + XGBoost,Physics
+1,Physics + XGBoost,Physics + XGBoost,Physics + XGBoost,Physics + XGBoost,Physics
+2,Physics + XGBoost,Physics + XGBoost,Physics,Physics + XGBoost,Physics
+3,Physics + XGBoost,Physics + XGBoost,Physics,Physics + XGBoost,Physics
+4,Linear Regression,Physics + XGBoost,Physics,Physics + XGBoost,Physics

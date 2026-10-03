@@ -1,0 +1,16 @@
+{
+ "Best component each": {
+  "leg_power": "Linear Regression",
+  "leg_overhead": "Physics + XGBoost",
+  "climb": "Physics",
+  "descent": "Physics + XGBoost",
+  "hover": "Physics"
+ },
+ "Physics-first": {
+  "leg_power": "Physics + XGBoost",
+  "leg_overhead": "Physics + XGBoost",
+  "climb": "Physics",
+  "descent": "Physics + XGBoost",
+  "hover": "Physics"
+ }
+}

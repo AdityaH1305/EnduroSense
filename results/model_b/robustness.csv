@@ -1,0 +1,7 @@
+variant,mae_wh,mape_pct
+Physics-first (as reported),0.4901193208747383,2.351928095929577
+... algorithm chosen inside each training fold (nested),0.5118364900659315,2.468568935325092
+... no wind input at all,0.4862439173260571,2.316464784843758
+... only a typical wind known when planning,0.5045544856802482,2.4104863419027502
+Best component each (as reported),0.48865125585368774,2.3415361169493614
+... nested,0.48786758228053484,2.3401669623228805

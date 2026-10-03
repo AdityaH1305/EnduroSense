@@ -1,6 +1,7 @@
-mission,Physics,Linear Regression,Random Forest,XGBoost,Physics + XGBoost,Best component each
-"Delivery 300 m, 500 g, 8 m/s, 50 m",19.81,20.54,20.84,20.82,20.37,20.54
-"Delivery 600 m, 500 g, 8 m/s, 50 m",30.07,31.61,31.46,31.39,31.2,31.5
-"Delivery 300 m, 500 g, 12 m/s, 100 m",23.11,23.14,23.46,23.75,23.51,23.35
-"Delivery 300 m, 0 g, 4 m/s, 25 m",26.34,24.9,26.19,26.0,25.73,24.97
-"R1-like loop 140/198/119 m, 250 g, 8 m/s, 50 m",18.16,18.56,18.75,18.96,18.6,18.7
+mission,Physics,Linear Regression,Random Forest,XGBoost,Physics + XGBoost,Best component each,Physics-first,outside_tested_range
+"Delivery 300 m, 500 g, 8 m/s, 50 m",19.81,20.54,20.84,20.82,20.37,20.54,20.41,
+"Delivery 600 m, 500 g, 8 m/s, 50 m",30.07,31.61,31.46,31.39,31.2,31.5,31.24,leg length 600 m is outside the tested range 12.4-334.5 m
+"Delivery 300 m, 500 g, 12 m/s, 100 m",23.11,23.14,23.46,23.75,23.51,23.35,23.52,
+"Delivery 300 m, 0 g, 4 m/s, 25 m",26.34,24.9,26.19,26.0,25.73,24.97,25.68,
+"R1-like loop 140/198/119 m, 250 g, 8 m/s, 50 m",18.16,18.56,18.75,18.96,18.6,18.7,18.64,
+"Out of range: delivery 300 m, 1000 g, 15 m/s, 150 m",31.28,29.06,22.08,22.42,31.89,30.05,31.89,speed 15 m/s is outside the tested range 4-12 m/s; altitude 150 m is outside the tested range 25-100 m; payload 1000 g is outside the tested range 0-750 g

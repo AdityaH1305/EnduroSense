@@ -83,6 +83,7 @@ model_b:
   min_leg_s: 3.0                   # cruise runs shorter than this are fragments, not legs
   max_speed_ratio: 1.05             # legs flown faster than this x commanded (repositioning) are flagged, not trained on
   exclude_varying_altitude: true    # 2 flights climb during cruise; their climb/descent targets are not comparable
+  physics_first_margin: 0.05        # use a physics-structured part unless a pure-ML part has >5% lower CV error
 
 uncertainty:
   interval: 0.90

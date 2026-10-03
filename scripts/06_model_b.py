@@ -7,11 +7,20 @@ Usage: python scripts/06_model_b.py      (a few minutes; development data only)
    and Physics + XGBoost with grouped CV; hyperparameters by random search.
 2. Mission comparison: rebuild every held-out flight's total energy from its
    plan (leg lengths, speed, payload, altitude, wind) with each family's
-   components, plus a "best component each" combination and a naive baseline.
+   components, two combinations ("best component each" and the main model,
+   "physics-first"), and a naive baseline. Also reports each model's systematic
+   bias per speed and payload.
 3. Generalisation: leave out every flight at one speed / payload / altitude /
    day, or the longer R5 route, and predict those missions.
 4. Plausibility: example missions of a shape absent from the data (deliveries
    that drop the payload half-way).
+
+Also checks how robust the headline number is: with the algorithm for each part
+chosen inside every training fold (no selection optimism), with no wind input,
+and with only a typical wind known at planning time.
+
+"The plan" of a recorded flight uses its measured leg lengths: the dataset does
+not give the programmed waypoints, and GPS leg lengths are the closest record.
 
 Writes results/model_b/*.csv, figures/*.png and models/model_b/*.pkl.
 """
@@ -34,12 +43,31 @@ from endurosense.plots import SERIES, apply_style, plt, save
 OUT = data_path("results") / "model_b"
 MODELS = data_path("models") / "model_b"
 FAMILIES = ["Physics", "Linear Regression", "Random Forest", "XGBoost", "Physics + XGBoost"]
+PHYSICS_STRUCTURED = ["Physics", "Physics + XGBoost"]
+MAIN = "Physics-first"                         # the Model B used by later phases
+COMPARED = FAMILIES + ["Best component each", MAIN]
+
+
+def choose_family(scores: dict, rule: str) -> str:
+    """Pick the algorithm for one part from its CV errors.
+
+    ``best``: lowest error. ``physics_first``: the better physics-structured
+    part, unless a pure-ML part is more than ``physics_first_margin`` better.
+    Physics-structured parts extrapolate to unseen settings and showed half the
+    systematic bias at the highest speed, at the same overall accuracy.
+    """
+    best_all = min(scores, key=scores.get)
+    if rule == "best":
+        return best_all
+    best_phys = min(PHYSICS_STRUCTURED, key=scores.get)
+    margin = load_config()["model_b"]["physics_first_margin"]
+    return best_all if scores[best_all] < (1 - margin) * scores[best_phys] else best_phys
 KIND = {"Linear Regression": "linear", "Random Forest": "random_forest", "XGBoost": "xgboost"}
 
 
-def make(family: str, comp: str, cfg: dict | None):
-    """Unfitted predictor for one component."""
-    feats = COMPONENTS[comp][1]
+def make(family: str, comp: str, cfg: dict | None, drop: tuple = ()):
+    """Unfitted predictor for one component (``drop``: input columns to withhold)."""
+    feats = [f for f in COMPONENTS[comp][1] if f not in drop]
     if family == "Physics":
         return physics_model(comp)
     if family == "Physics + XGBoost":
@@ -85,19 +113,56 @@ def search_components(flights_b, legs, n_trials: int, seed: int):
     return best, pd.DataFrame(log)
 
 
-def mission_factory(choice: dict):
+def mission_factory(choice: dict, drop: tuple = ()):
     """choice: component -> (family, cfg)."""
-    return lambda comp: make(choice[comp][0], comp, choice[comp][1])
+    return lambda comp: make(choice[comp][0], comp, choice[comp][1], drop)
 
 
-def mission_cv(choice, flights_b, legs) -> pd.Series:
-    """Out-of-fold mission energy for every dev flight."""
+def mission_cv(choice, flights_b, legs, drop: tuple = (), typical_wind: bool = False) -> pd.Series:
+    """Out-of-fold mission energy for every dev flight.
+
+    ``drop`` withholds inputs from every component. ``typical_wind`` trains with
+    the measured wind but predicts with the training folds' average wind, i.e.
+    as if only a typical wind were known when planning.
+    """
     pred = pd.Series(np.nan, index=flights_b["flight"].to_numpy())
     for _, tr, va in dev_folds(flights_b):
         tr_legs, va_legs = legs[legs["flight"].isin(tr["flight"])], legs[legs["flight"].isin(va["flight"])]
-        model = fit_mission_model(mission_factory(choice), tr, tr_legs)
+        model = fit_mission_model(mission_factory(choice, drop), tr, tr_legs)
+        if typical_wind:
+            w = float(tr["ambient_wind"].mean())
+            va, va_legs = va.assign(ambient_wind=w), va_legs.assign(ambient_wind=w)
         pred.loc[va["flight"].to_numpy()] = model.predict_flights(va, va_legs).to_numpy()
     return pred
+
+
+def nested_selection_cv(best, flights_b, legs, rule: str) -> tuple[pd.Series, pd.DataFrame]:
+    """A combination with the algorithm for each part chosen *inside* every training
+    fold (by CV over the other four folds), so the fold being scored never
+    influences the choice. Measures how optimistic the plain result is."""
+    folds = list(dev_folds(flights_b))
+    pred, picks = pd.Series(np.nan, index=flights_b["flight"].to_numpy()), []
+    for k, tr, va in folds:
+        tr_legs = legs[legs["flight"].isin(tr["flight"])]
+        sel = {}
+        for comp, (target, _) in COMPONENTS.items():
+            rows = component_rows(comp, tr, tr_legs)
+            score = {}
+            for fam in FAMILIES:
+                errs = []
+                for j, _, inner_va in folds:
+                    if j == k:
+                        continue
+                    r_tr, r_va = rows[~rows["flight"].isin(inner_va["flight"])], rows[rows["flight"].isin(inner_va["flight"])]
+                    p = make(fam, comp, best[(fam, comp)]["cfg"]).fit(r_tr, target).predict(r_va)
+                    errs.append(np.mean(np.abs(p - r_va[target].to_numpy())))
+                score[fam] = float(np.mean(errs))
+            fam = choose_family(score, rule)
+            sel[comp] = (fam, best[(fam, comp)]["cfg"])
+        picks.append({"fold": k, **{c: v[0] for c, v in sel.items()}})
+        model = fit_mission_model(mission_factory(sel), tr, tr_legs)
+        pred.loc[va["flight"].to_numpy()] = model.predict_flights(va, legs[legs["flight"].isin(va["flight"])]).to_numpy()
+    return pred, pd.DataFrame(picks)
 
 
 def holdout(choice, flights_b, legs, test_mask) -> tuple[np.ndarray, np.ndarray]:
@@ -129,8 +194,9 @@ def main() -> None:
 
     # 2. missions --------------------------------------------------------------
     choices = {f: {c: (f, best[(f, c)]["cfg"]) for c in COMPONENTS} for f in FAMILIES}
-    best_each = {c: (comp_table.loc[c].idxmin(), best[(comp_table.loc[c].idxmin(), c)]["cfg"]) for c in COMPONENTS}
-    choices["Best component each"] = best_each
+    for name, rule in (("Best component each", "best"), (MAIN, "physics_first")):
+        fam = {c: choose_family(comp_table.loc[c].to_dict(), rule) for c in COMPONENTS}
+        choices[name] = {c: (fam[c], best[(fam[c], c)]["cfg"]) for c in COMPONENTS}
     y = flights_b.set_index("flight")["total_wh"]
     oof = {}
     for name, choice in choices.items():
@@ -140,18 +206,49 @@ def main() -> None:
         naive.loc[va["flight"].to_numpy()] = tr["total_wh"].mean()
     oof["Average flight (naive)"] = naive
 
-    groups = flights_b.set_index("flight").loc[y.index, "battery_chain"]
+    fmeta = flights_b.set_index("flight").loc[y.index]
+    groups = fmeta["battery_chain"]
+    # systematic error per setting: a model can be accurate on average yet biased for,
+    # say, the fastest flights; a negative bias means it under-predicts the energy needed
+    bias_rows = []
+    for name, p in oof.items():
+        for col in ("speed", "payload"):
+            g = (p - y).groupby(fmeta[col]).agg(["mean", "size"])
+            for val, r in g[g["size"] >= 3].iterrows():
+                bias_rows.append({"model": name, "setting": col, "value": val, "flights": int(r["size"]), "bias_wh": r["mean"]})
+    bias = pd.DataFrame(bias_rows)
+    bias.to_csv(OUT / "mission_bias.csv", index=False)
+    worst = bias.assign(a=bias["bias_wh"].abs()).sort_values("a").groupby("model").tail(1).set_index("model")
     rows = []
     for name, p in oof.items():
         m = metrics(y, p)
         c = paired_comparison(y, p, oof["Physics"], groups)
         rows.append({"model": name, "mae_wh": m["mae"], "mape_pct": float(np.mean(np.abs(p - y) / y) * 100),
                      "rmse_wh": m["rmse"], "r2": m["r2"], "bias_wh": m["bias"],
+                     "worst_group_bias_wh": float(worst.loc[name, "bias_wh"]),
+                     "worst_group": f"{worst.loc[name, 'setting']} {worst.loc[name, 'value']:g}",
                      "vs_physics_diff": c["mae_diff"], "vs_physics_ci_low": c["ci_low"], "vs_physics_ci_high": c["ci_high"]})
     mission_table = pd.DataFrame(rows).sort_values("mae_wh").reset_index(drop=True)
     mission_table.to_csv(OUT / "mission_cv.csv", index=False)
     pd.DataFrame({"total_wh": y, **{k: v for k, v in oof.items()}}).to_parquet(OUT / "mission_oof.parquet")
-    (OUT / "best_component_each.json").write_text(json.dumps({c: v[0] for c, v in best_each.items()}, indent=1))
+    (OUT / "combinations.json").write_text(json.dumps(
+        {name: {c: v[0] for c, v in choices[name].items()} for name in ("Best component each", MAIN)}, indent=1))
+
+    # 2b. robustness of the headline result ---------------------------------------
+    mae = lambda p: float(np.mean(np.abs(p.reindex(y.index) - y)))
+    mape = lambda p: float(np.mean(np.abs(p.reindex(y.index) - y) / y) * 100)
+    nested, picks = nested_selection_cv(best, flights_b, legs, "physics_first")
+    nested_best, _ = nested_selection_cv(best, flights_b, legs, "best")
+    checks = {f"{MAIN} (as reported)": oof[MAIN],
+              "... algorithm chosen inside each training fold (nested)": nested,
+              "... no wind input at all": mission_cv(choices[MAIN], flights_b, legs, drop=("ambient_wind",)),
+              "... only a typical wind known when planning": mission_cv(choices[MAIN], flights_b, legs, typical_wind=True),
+              "Best component each (as reported)": oof["Best component each"],
+              "... nested": nested_best}
+    robustness = pd.DataFrame([{"variant": k, "mae_wh": mae(v), "mape_pct": mape(v)} for k, v in checks.items()])
+    robustness.to_csv(OUT / "robustness.csv", index=False)
+    picks.to_csv(OUT / "nested_selection_choices.csv", index=False)
+    print(robustness.round(3).to_string(index=False), flush=True)
 
     # 3. generalisation --------------------------------------------------------
     tests = []
@@ -168,7 +265,7 @@ def main() -> None:
     tests.append(("R5 route = day 1 (4 flights)", "R5 (~505 m)", (fb["route"] == "R5").to_numpy()))
     gen = []
     for test, value, mask in tests:
-        for name in ["Physics", "Linear Regression", "Random Forest", "XGBoost", "Physics + XGBoost", "Best component each"]:
+        for name in COMPARED:
             yt, pt = holdout(choices[name], fb, legs, mask)
             gen.append({"test": test, "held_out": value, "model": name, "flights": int(mask.sum()),
                         "mae_wh": float(np.mean(np.abs(pt - yt))), "mape_pct": float(np.mean(np.abs(pt - yt) / yt) * 100),
@@ -182,19 +279,25 @@ def main() -> None:
 
     # 4. final models + plausibility --------------------------------------------
     final = {}
-    for name in ["Physics", "Linear Regression", "Random Forest", "XGBoost", "Physics + XGBoost", "Best component each"]:
+    for name in COMPARED:
         final[name] = fit_mission_model(mission_factory(choices[name]), fb, legs)
         with open(MODELS / f"{name.replace(' ', '_').replace('+', 'plus')}.pkl", "wb") as fh:
             pickle.dump(final[name], fh)
+    with open(MODELS / "model_b.pkl", "wb") as fh:                 # the main Model B for later phases
+        pickle.dump(final[MAIN], fh)
     examples = [("Delivery 300 m, 500 g, 8 m/s, 50 m", MissionSpec.delivery(300, 500, 8, 50)),
                 ("Delivery 600 m, 500 g, 8 m/s, 50 m", MissionSpec.delivery(600, 500, 8, 50)),
                 ("Delivery 300 m, 500 g, 12 m/s, 100 m", MissionSpec.delivery(300, 500, 12, 100)),
                 ("Delivery 300 m, 0 g, 4 m/s, 25 m", MissionSpec.delivery(300, 0, 4, 25)),
-                ("R1-like loop 140/198/119 m, 250 g, 8 m/s, 50 m", MissionSpec.loop([140, 198, 119], 250, 8, 50))]
+                ("R1-like loop 140/198/119 m, 250 g, 8 m/s, 50 m", MissionSpec.loop([140, 198, 119], 250, 8, 50)),
+                ("Out of range: delivery 300 m, 1000 g, 15 m/s, 150 m", MissionSpec.delivery(300, 1000, 15, 150))]
     ex = pd.DataFrame({name: {label: m.mission(spec)["total_wh"] for label, spec in examples}
                        for name, m in final.items()})
+    main_model = final[MAIN]
+    ex["outside_tested_range"] = ["; ".join(main_model.extrapolation_warnings(spec)) for _, spec in examples]
     ex.index.name = "mission"
     ex.round(2).to_csv(OUT / "example_missions.csv")
+    (OUT / "tested_ranges.json").write_text(json.dumps(main_model.ranges, indent=1))
     physics_params = {"leg_power": dict(zip(["airframe_mass_kg", "P0_w", "k_ind", "k_par"],
                                             map(float, final["Physics"].predictors["leg_power"].theta))),
                       "leg_overhead": {"inv_accel_s2_per_m": float(final["Physics"].predictors["leg_overhead"].inv_a),
@@ -221,7 +324,7 @@ def figures(comp_table, mission_table, oof, y, gen_summary) -> None:
     fig.suptitle("Model B components: grouped-CV error per algorithm (orange = physics)", x=0.01, ha="left")
     save(fig, OUT / "figures" / "component_comparison.png")
 
-    best = mission_table[mission_table["model"] != "Average flight (naive)"].iloc[0]["model"]
+    best = MAIN
     fig, ax = plt.subplots(figsize=(4.6, 4.2))
     ax.scatter(y, oof[best], s=14, color=SERIES[0], alpha=0.7)
     lim = [y.min() - 1, y.max() + 1]
@@ -231,15 +334,15 @@ def figures(comp_table, mission_table, oof, y, gen_summary) -> None:
     save(fig, OUT / "figures" / "mission_pred_vs_true.png")
 
     piv = gen_summary.pivot(index="test", columns="model", values="mape_pct")
-    models = ["Physics", "Linear Regression", "Random Forest", "XGBoost", "Physics + XGBoost", "Best component each"]
-    fig, ax = plt.subplots(figsize=(9, 3.6))
-    w = 0.13
+    models = COMPARED
+    fig, ax = plt.subplots(figsize=(10, 3.6))
+    w = 0.115
     for k, m in enumerate(models):
-        ax.bar(np.arange(len(piv)) + (k - 2.5) * w, piv[m], w, color=SERIES[k], label=m)
+        ax.bar(np.arange(len(piv)) + (k - 3) * w, piv[m], w, color=SERIES[k], label=m)
     ax.set_xticks(range(len(piv)), piv.index)
     ax.set_ylabel("mission energy error (%)")
     ax.set_title("Predicting missions with settings never seen in training")
-    ax.legend(fontsize=7, ncol=3)
+    ax.legend(fontsize=7, ncol=4)
     save(fig, OUT / "figures" / "generalisation.png")
 
 

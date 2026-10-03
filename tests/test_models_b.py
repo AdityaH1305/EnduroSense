@@ -76,6 +76,41 @@ def test_component_models_never_see_validation_flights(dev_b):
         assert set(tr["battery_chain"]).isdisjoint(va["battery_chain"])
 
 
+@pytest.mark.data
+def test_extrapolation_is_flagged_and_never_negative(dev_b):
+    flights, legs = dev_b
+    model = fit_mission_model(physics_model, flights, legs)
+    inside = MissionSpec.loop([140, 198, 119], 250, 8, 50, wind=3.0)
+    assert model.extrapolation_warnings(inside) == []
+    outside = MissionSpec.delivery(300, 1000, 15, 150)
+    flagged = " ".join(model.extrapolation_warnings(outside))
+    assert "speed 15 m/s" in flagged and "altitude 150 m" in flagged and "payload 1000 g" in flagged
+    # 2 m/s is below the tested speeds: the kinematic overhead would go negative without the clamp
+    slow = MissionSpec.loop([100.0], 0, 2.0, 50)
+    assert model.leg_time_s(100.0, 2.0, 0, 3.0) >= 100.0 / 2.0
+    assert all(v >= 0 for k, v in model.mission(slow).items() if k != "leg_wh")
+
+
+@pytest.mark.data
+def test_saved_main_model_loads_and_predicts_sensibly():
+    import pickle
+    from endurosense.config import data_path
+    path = data_path("models") / "model_b" / "model_b.pkl"
+    if not path.exists():
+        pytest.skip("run scripts/06_model_b.py first")
+    with open(path, "rb") as fh:
+        model = pickle.load(fh)
+    short = model.mission(MissionSpec.delivery(300, 500, 8, 50))["total_wh"]
+    long = model.mission(MissionSpec.delivery(600, 500, 8, 50))["total_wh"]
+    heavy = model.mission(MissionSpec.loop([140, 198, 119], 500, 8, 50))["total_wh"]
+    light = model.mission(MissionSpec.loop([140, 198, 119], 0, 8, 50))["total_wh"]
+    high = model.mission(MissionSpec.loop([140, 198, 119], 250, 8, 100))["total_wh"]
+    low = model.mission(MissionSpec.loop([140, 198, 119], 250, 8, 25))["total_wh"]
+    assert 10 < short < long < 60          # a further delivery costs more
+    assert heavy > light                   # more payload costs more
+    assert high > low                      # climbing higher costs more
+
+
 def test_every_component_has_planning_time_features_only():
     banned = {"ground_speed", "power_w", "duration_s", "energy_wh", "overhead_s", "total_wh"}
     for comp, (target, feats) in COMPONENTS.items():

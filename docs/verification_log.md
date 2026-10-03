@@ -49,3 +49,30 @@ The full detail is in [data_report.md](data_report.md) §0.
 - `pytest`: **65 passed**.
 - `pyflakes`: clean.
 - Phase 3 accuracy results: unchanged.
+
+## Pass 3: Phase 4 only (2026-10-03)
+
+| # | Found | Severity | Fix |
+|---|---|---|---|
+| 1 | **Systematic under-prediction at 12 m/s.** "Best component each" was the main Model B, chosen on overall CV error. Its leg-power part (Linear Regression) can't follow the flat-then-rising power curve, so missions at 12 m/s were under-predicted by 0.44 Wh on average: the unsafe direction, hidden inside a good overall error | Medium | The main model is now **physics-first** (a physics-structured part unless pure ML is >5% better): same accuracy (0.490 vs 0.489 Wh) and half the bias (−0.23 Wh at 12 m/s). The script now reports each model's bias per speed and payload (`mission_bias.csv`) and its worst-group bias in the results table |
+| 2 | The leg-time formula predicts a negative overhead below about 3 m/s (flying faster than commanded) | Low (outside the tested range) | Energies and overheads are clamped at zero in both the single-mission and batch paths |
+| 3 | Nothing told a user when a mission was outside the tested ranges, where tree-based parts silently repeat in-range values | Medium (for the demo and scheduler) | `MissionEnergyModel.extrapolation_warnings()`; tested ranges saved to `tested_ranges.json`; an out-of-range example added |
+| 4 | The headline number carried unmeasured selection optimism | Low | Nested selection added to the script: 2.35% as reported, **2.47% nested**; both are quoted |
+| 5 | The wind input is each flight's own measured wind (a "perfect forecast"), and its effect was unmeasured | Low | Wind-sensitivity checks added: no wind input gives 2.32%; only a typical wind gives 2.41%. Wind barely matters in the tested range, so the assumption is harmless |
+| 6 | Docs didn't say that a recorded flight's "plan" uses its *measured* leg lengths (the dataset has no waypoints) | Low | Stated in the script and the notes |
+| 7 | One figure in the notes was stale after the clamp (Linear Regression on the R5 test: 3.9% → 4.0%); a console log file was left in `results/model_b/` | Low | Notes rewritten from the regenerated tables; file removed |
+
+### Checked and confirmed correct (no change needed)
+
+- **An independent from-scratch implementation** of the physics family reproduces the script's out-of-fold mission predictions to 10⁻¹⁴ Wh per flight.
+- **Folds share no flight and no battery chain;** component models are fitted on training flights only; the script reads development data only.
+- **The batch evaluation path equals the single-mission path** (test).
+- **The saved main model loads from disk and behaves sensibly:** further costs more, heavier costs more, higher costs more (test).
+- **Errors show no systematic bias across altitude,** and the remaining bias per speed and payload is at most 0.27 Wh.
+- **Deterministic:** repeated runs give identical tables.
+- **Tried and rejected:** Physics + a linear correction as an extra family. It fixes the 12 m/s bias but adds a +0.55 Wh bias at 4 m/s.
+
+### Status after pass 3
+
+- `pytest`: **74 passed**.
+- `pyflakes`: clean.

@@ -1,7 +1,0 @@
-{
- "leg_power": "Linear Regression",
- "leg_overhead": "Physics + XGBoost",
- "climb": "Physics",
- "descent": "Physics + XGBoost",
- "hover": "Physics"
-}
