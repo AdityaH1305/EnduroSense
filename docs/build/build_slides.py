@@ -183,6 +183,8 @@ def demo_world():
 def deck() -> list:
     n, world = numbers(), demo_world()
     tau, a, ar, bm, br, allp, pre, fleet = n["tau"], n["a"], n["ar"], n["bm"], n["br"], n["allp"], n["pre"], n["fleet"]
+    f = L.headline_facts()                                         # result-dependent statements, shared with the dashboard and report
+    word = f["number_word"]
     case = L.three_missions(world["grid"], tau)
     figs = charts(n, world, case, tau)
     MAIN = "GRU ensemble, calibrated (main)"
@@ -209,9 +211,9 @@ def deck() -> list:
              "looks as if it has plenty of time, whatever the next mission needs.\n"
              "**A single number hides how sure it is.** Two batteries can show the same estimate while one is far less certain.", size=20, bullets=True, after=14),
         box(7.4, 1.9, 5.3, 1.5, "Minutes left ≥ mission duration?", fill="F2F1EE", size=22),
-        text(7.4, 3.55, 5.3, 0.6, "approves 1 in 8 missions that would cut into the reserve", size=16, color=RED, align="center"),
+        text(7.4, 3.55, 5.3, 0.6, f"approves 1 in {f['one_in_p1']} missions that would cut into the reserve", size=16, color=RED, align="center"),
         box(7.4, 4.5, 5.3, 1.5, "What is the chance this battery has the energy this mission needs?", fill=LIGHT, size=22, bold=True, color=BLUE)],
-        f"The 1-in-8 figure is the test-set result: {pct(allp.loc[n['P1'], 'unsafe_approval_rate'])} of missions that would fail are approved by the minutes-left rule."))
+        f"The 1-in-{f['one_in_p1']} figure is the test-set result: {pct(allp.loc[n['P1'], 'unsafe_approval_rate'])} of missions that would fail are approved by the minutes-left rule."))
 
     s.append(slide("The idea: predict two energies, each with an honest range", [
         box(M, 1.9, 3.6, 2.0, "Energy available\n(Model A)", fill=LIGHT, size=22, bold=True, color=BLUE),
@@ -240,7 +242,7 @@ def deck() -> list:
              f"**Main model: five GRUs averaged.** {a.loc[MAIN, 'test_mae_supported']:.2f} Wh error on unseen batteries, against "
              f"{a.loc['Voltage lookup', 'test_mae_supported']:.2f} Wh for the best non-ML method.\n"
              f"**A single GRU won in development but not on test** ({a.loc['GRU', 'test_mae_supported']:.2f} Wh). The ensemble is what held up.\n"
-             "**Fast enough for on-board use:** about 5 ms per prediction on a laptop CPU.", size=17, bullets=True, after=10)],
+             f"**Fast enough for on-board use:** {f['latency_ms']} ms or less per prediction on a laptop CPU.", size=17, bullets=True, after=10)],
         "Error is in watt-hours; a pack has about 65 Wh usable above the reserve, so 2.2 Wh is about 3%."))
 
     s.append(slide("Model B: energy a mission needs", [
@@ -260,7 +262,8 @@ def deck() -> list:
                                  ["Energy required", pct(db["cov90"]), pct(br["cov90"])]], [2.8, 1.6, 1.6], size=17),
         image(7.3, 1.5, 5.3, figs["reliability"]),
         text(7.3, 6.15, 5.3, 0.8, f"P(success) against what happened, on test. Missions rated 95–99% succeeded {pct(band['observed_success'], 0)}.", size=14, color=GREY)],
-        "Model A's ranges held on test. Model B's were too narrow on new data (80% against 90%): a real weakness, reported as such."))
+        f"Model A's ranges were about right on test ({pct(ar['cov90'])}, slightly wide). Model B's were too narrow on new data ({pct(br['cov90'], 0)} against 90%): "
+        "a real weakness, reported as such."))
 
     labels = [m["label"] for m in mis]
     s.append(slide("Three missions, one battery: the brief’s rule approves all three", [
@@ -274,12 +277,13 @@ def deck() -> list:
                size=15, color=GREY, align="center") for i, ((_, r), m) in enumerate(zip(case.iterrows(), mis))]],
         "Real test data, picked by a fixed rule. Missions: " + " | ".join(labels) + ". The minutes-left rule says GO for all three."))
 
-    s.append(slide("Result: unsafe approvals fall from 12% to under 1%", [
+    after = "under 1%" if f["unsafe_p3"] < 0.01 else pct(f["unsafe_p3"], 1)
+    s.append(slide(f"Result: unsafe approvals fall from {pct(f['unsafe_p1'], 0)} to {after}", [
         image(M, 1.5, 8.0, figs["unsafe"]),
         *big(9.0, 1.5, 3.8, pct(allp.loc[n["P3"], "unsafe_approval_rate"], 2), "of failing missions approved by EnduroSense\n(test set, all battery states)"),
         *big(9.0, 3.6, 3.8, pct(pre.loc[n["P3"], "unsafe_approval_rate"], 2), "at take-off decisions", color=GREEN),
         text(M, 5.3, cw, 1.6, f"**The price is caution:** it refuses {pct(allp.loc[n['P3'], 'wasted_refusal_rate'], 0)} of missions that would have succeeded, mostly those within a few Wh of the limit.\n"
-             "**Minutes-left cannot be rescued with a safety margin:** to be as safe it must refuse 9 in 10 feasible missions.", size=17, bullets=True, after=8)],
+             f"**Minutes-left cannot be rescued with a safety margin:** to be as safe it must refuse {round(10 * f['wasted_p1_margin'])} in 10 feasible missions.", size=17, bullets=True, after=8)],
         "Unsafe approval = a mission approved that would have cut into the reserve, as a share of all such missions. Evaluated by pairing real unseen battery states with real unseen missions."))
 
     s.append(slide("In a simulated fleet on unseen batteries", [
@@ -287,7 +291,8 @@ def deck() -> list:
         *big(8.9, 1.6, 3.9, f"{int(f1['unsafe_per_100_missions'] / f3['unsafe_per_100_missions'])}×", "fewer unsafe missions than the brief’s rule"),
         text(8.9, 3.7, 3.9, 3.0, f"4 drones, 40 tasks a day, 200 days.\n{int(f3['batteries'])} real unseen batteries; tasks are real recorded flights.\n"
              f"Cost: {100 * (f3['swaps_per_day'] / f1['swaps_per_day'] - 1):.0f}% more battery swaps.", size=17, color=GREY, after=10)],
-        "Only the pairing of batteries with tasks is simulated. Best estimates plus a fixed margin tuned in development does about as well as EnduroSense here."))
+        "Only the pairing of batteries with tasks is simulated. Best estimates plus a fixed margin tuned in development sits close to EnduroSense here: "
+        "slightly fewer unsafe missions, more battery swaps."))
 
     s.append(slide("What did not hold up", [
         text(M, 1.6, cw, 4.3,
@@ -296,14 +301,15 @@ def deck() -> list:
              "**The probability against a well-tuned fixed margin:** no measurable difference over all cases. The probability refused fewer "
              "feasible missions at take-off and needs no tuning.\n"
              "**Risk is per battery:** all of EnduroSense’s unsafe approvals came from two batteries whose capacity the model over-estimated.", size=19, bullets=True, after=14),
-        box(M, 6.0, cw, 0.9, "Two of four pre-set success criteria met. The misses are reported, not patched.", fill="F2F1EE", size=19, bold=True)],
+        box(M, 6.0, cw, 0.9, f"{word(f['criteria_met']).capitalize()} of {word(f['criteria_total'])} pre-set success criteria met. The misses are reported, not patched.",
+            fill="F2F1EE", size=19, bold=True)],
         "These weaknesses were found on the test set. Fixing them and re-scoring on the same test set would make the numbers dishonest, so they are reported as they are."))
 
     s.append(slide("Why the numbers can be trusted", [
         text(M, 1.6, cw, 5.2, "**A locked test set,** chosen before any modelling. Every opening is logged: the evaluation, and one rerun after verification that gave identical numbers.\n"
              "**Success criteria written down first,** so they could not be adjusted after seeing results.\n"
              "**One command rebuilds everything** from the raw data in 30 minutes. A rebuild with empty caches reproduced every result and model file byte for byte.\n"
-             "**Five verification passes:** headline numbers recomputed with separate code, a search for leakage, and deliberate bugs planted to confirm the tests catch them.\n"
+             f"**{word(f['verification_passes']).capitalize()} verification passes:** headline numbers recomputed with separate code, a search for leakage, and deliberate bugs planted to confirm the tests catch them.\n"
              "**Errors found were written up,** including the ones in our own reporting.", size=19, bullets=True, after=14)],
         "The verification log (docs/verification_log.md) lists what each pass found and fixed."))
 

@@ -34,6 +34,19 @@ STATE_COLUMNS = ["flight", "battery_chain", "time", "t_chain_s", "flight_index",
 
 
 # ------------------------------------------------------------------ loading
+def missing_inputs() -> list[str]:
+    """Saved files the dashboard needs that do not exist yet (paths relative to the project)."""
+    root = data_path("results").parent
+    needed = [FINAL / n for n in ("model_a_test_quantiles.parquet", "model_a_test_metrics.csv", "model_a_test_ranges.csv",
+                                  "model_a_test_coverage_by_chain.csv", "model_b_test_flights.csv", "model_b_test_metrics.csv",
+                                  "model_b_test_ranges.csv", "success_criteria.csv", "operating_points.csv", "probability_reliability.csv",
+                                  "fleet_simulation.csv", "summary.json")]
+    needed += [data_path("models") / "model_b" / "model_b_calibrated.pkl", data_path("results") / "decisions" / "matched_margins.json",
+               data_path("results") / "model_a" / "cv_metrics.csv"]
+    needed += [data_path("features") / n for n in ("model_a.parquet", "model_b_flights.parquet", "model_b_legs.parquet")]
+    return [(p.relative_to(root) if p.is_relative_to(root) else p).as_posix() for p in needed if not p.exists()]
+
+
 def levels() -> np.ndarray:
     return np.array(load_config()["uncertainty"]["quantiles"])
 
@@ -216,3 +229,86 @@ def result_tables() -> dict:
             "fleet": pd.read_csv(FINAL / "fleet_simulation.csv"),
             "latency": pd.read_csv(data_path("results") / "model_a" / "cv_metrics.csv")[["model", "latency_ms", "size_mb"]],
             "summary": json.loads((FINAL / "summary.json").read_text())}
+
+
+# ------------------------------------------------------------------ headline facts (one source for dashboard, report and slides)
+def criterion_verdicts(criteria: pd.DataFrame) -> list[str]:
+    """In words: met, not met, or not met but with the target inside the sampling interval."""
+    out = []
+    for _, c in criteria.iterrows():
+        if bool(c["met"]):
+            out.append("Met")
+        elif "inside both intervals: yes" in str(c["evidence"]):
+            out.append("Not met, within sampling noise")
+        else:
+            out.append("Not met")
+    return out
+
+
+def one_in(rate: float) -> int:
+    """A rate as "1 in N", rounded to two significant figures (12.4% -> 8, 0.61% -> 160)."""
+    n = 1.0 / rate
+    digits = max(0, int(np.floor(np.log10(n))) - 1)
+    return int(round(n, -digits))
+
+
+def _unseen_all_over_predicted() -> bool:
+    d = pd.read_csv(FINAL / "model_b_test_flights.csv")
+    d = d[~d["seen_route"].astype(bool)]
+    return bool(len(d) and (d["predicted_wh"] > d["total_wh"]).all())
+
+
+def headline_facts() -> dict:
+    """Every result-dependent statement made in the dashboard, the report and the slides, read from
+    the result files. If the pipeline is rerun (for example with a different reserve or threshold),
+    the three deliverables follow without any text being edited."""
+    cfg, t = load_config(), result_tables()
+    tau = float(cfg["decision"]["tau"])
+    crit, a, ar = t["criteria"], t["model_a"].set_index("model"), t["model_a_ranges"].iloc[0]
+    main = "GRU ensemble, calibrated (main)"
+    bm = t["model_b"][t["model_b"]["model"] == "Physics-first"].set_index("flights_group")
+    br = t["model_b_ranges"].set_index("model").loc["Physics-first, calibrated: all test flights"]
+    pts = t["operating_points"].assign(policy=lambda d: d["policy"].str.strip())
+    allp, pre = (pts[pts["pairs"] == s].set_index("policy") for s in ("all pairs", "pre-flight states"))
+    p1, p2, p3 = "P1 minutes left, as in the brief (ratio >= 1)", "P2 energy point estimates (margin >= 0 Wh)", f"P3 EnduroSense, tau = {tau}"
+    with_margin = lambda table, rule: table.loc[[p for p in table.index if p.startswith(f"{rule} with margin") and f"tau = {tau} " in p][0]]
+    fleet = t["fleet"].set_index("policy")
+    f1, f3 = fleet.loc["P1 minutes left (brief)"], fleet.loc[f"P3 EnduroSense (tau = {tau})"]
+    by_chain = pd.read_csv(FINAL / "model_a_test_coverage_by_chain.csv")
+    band = t["reliability"][t["reliability"]["band"] == "(0.95, 0.99]"].iloc[0]
+    verdicts = criterion_verdicts(crit)
+    log = (data_path("results").parent / "docs" / "verification_log.md")
+    passes = len([ln for ln in log.read_text(encoding="utf-8").splitlines() if ln.startswith("## Pass ")]) if log.exists() else 0
+    words = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
+    return {
+        "tau": tau, "reserve_v": float(cfg["battery"]["reserve_v"]), "criteria": crit, "verdicts": verdicts,
+        "criteria_met": int(crit["met"].sum()), "criteria_total": int(len(crit)), "number_word": lambda n: words[n] if n < len(words) else str(n),
+        "verification_passes": passes,
+        "test_flights": int(t["summary"]["model_b"]["flights"]), "labelled_batteries": int(ar["chains"]), "test_readings": int(t["summary"]["model_a"]["readings"]),
+        "a_main": float(a.loc[main, "test_mae_supported"]), "a_main_cv": float(a.loc[main, "cv_mae_supported"]),
+        "a_lookup": float(a.loc["Voltage lookup", "test_mae_supported"]), "a_lookup_cv": float(a.loc["Voltage lookup", "cv_mae_supported"]),
+        "a_counting": float(a.loc["Energy counting (BMS)", "test_mae_supported"]),
+        "a_gru": float(a.loc["GRU", "test_mae_supported"]), "a_gru_cv": float(a.loc["GRU", "cv_mae_supported"]), "a_lstm_cv": float(a.loc["LSTM", "cv_mae_supported"]),
+        "a_tabular_cv": (float(a.loc[["Random Forest", "Linear Regression", "XGBoost", "XGBoost + physics"], "cv_mae_supported"].min()),
+                         float(a.loc[["Random Forest", "Linear Regression", "XGBoost", "XGBoost + physics"], "cv_mae_supported"].max())),
+        "a_cov90": float(ar["cov90"]), "a_cov90_ci": (float(ar["cov90_ci_low"]), float(ar["cov90_ci_high"])), "a_width90": float(ar["width90"]),
+        "a_truth_below": float(ar["truth_below_90_range"]),
+        "a_batteries_covered": int((by_chain["coverage"] >= 0.99).sum()), "a_batteries_over_estimated": int((by_chain["truth_below_range"] > 0.05).sum()),
+        "a_min_coverage_of_covered": float(by_chain.loc[by_chain["coverage"] >= 0.99, "coverage"].min()),
+        "b_all": float(bm.loc["all test flights", "mape_pct"]), "b_seen": float(bm.loc["route seen in development", "mape_pct"]),
+        "b_unseen": float(bm.loc["unseen routes", "mape_pct"]), "b_unseen_flights": int(bm.loc["unseen routes", "flights"]),
+        "b_unseen_bias": float(bm.loc["unseen routes", "bias_wh"]), "b_unseen_mae": float(bm.loc["unseen routes", "mae_wh"]),
+        "b_unseen_all_over_predicted": bool(_unseen_all_over_predicted()), "b_cov90": float(br["cov90"]),
+        "unsafe_p1": float(allp.loc[p1, "unsafe_approval_rate"]), "unsafe_p2": float(allp.loc[p2, "unsafe_approval_rate"]),
+        "unsafe_p3": float(allp.loc[p3, "unsafe_approval_rate"]), "unsafe_p3_takeoff": float(pre.loc[p3, "unsafe_approval_rate"]),
+        "wasted_p3": float(allp.loc[p3, "wasted_refusal_rate"]), "wasted_p3_takeoff": float(pre.loc[p3, "wasted_refusal_rate"]),
+        "wasted_p1_margin": float(with_margin(allp, "P1")["wasted_refusal_rate"]), "unsafe_p2_margin": float(with_margin(allp, "P2")["unsafe_approval_rate"]),
+        "wasted_p2_margin": float(with_margin(allp, "P2")["wasted_refusal_rate"]), "wasted_p2_margin_takeoff": float(with_margin(pre, "P2")["wasted_refusal_rate"]),
+        "one_in_p1": one_in(float(allp.loc[p1, "unsafe_approval_rate"])), "one_in_p3": one_in(float(allp.loc[p3, "unsafe_approval_rate"])),
+        "fleet_p1": float(f1["unsafe_per_100_missions"]), "fleet_p3": float(f3["unsafe_per_100_missions"]),
+        "fleet_ratio": int(f1["unsafe_per_100_missions"] / f3["unsafe_per_100_missions"]) if f3["unsafe_per_100_missions"] > 0 else None,
+        "fleet_extra_swaps": float(f3["swaps_per_day"] / f1["swaps_per_day"] - 1), "fleet_batteries": int(f3["batteries"]),
+        "fleet_p1_margin_completed": float(fleet.loc["P1 + margin tuned on development data", "completed_per_day"]),
+        "band_predicted": float(band["mean_predicted"]), "band_succeeded": float(band["observed_success"]),
+        "latency_ms": int(np.ceil(t["latency"].loc[t["latency"]["model"] != "Fixed capacity (reference)", "latency_ms"].max())),
+    }

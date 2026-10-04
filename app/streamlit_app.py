@@ -32,7 +32,7 @@ def world() -> dict:
     pre = W.preflight_states(a)
     return {"lv": lv, "a": a, "q": q, "model": model, "missions": missions, "q_b": q_b, "plan": plan, "tw": tw,
             "durations": L.phase_durations(), "margins": L.development_margins(), "pre": pre,
-            "grid_pre": L.score_grid(pre, q, missions, q_b, lv, tw), "tables": L.result_tables()}
+            "grid_pre": L.score_grid(pre, q, missions, q_b, lv, tw), "tables": L.result_tables(), "facts": L.headline_facts()}
 
 
 @st.cache_resource(show_spinner="Scoring every battery state against every recorded mission...")
@@ -161,7 +161,8 @@ def page_check(tau: float, reveal: bool) -> None:
                 flight = st.selectbox("Which take-off", pre["flight"].tolist(), format_func=lambda f: f"Flight {f}")
                 state = pre[pre["flight"] == flight].iloc[0]
             else:
-                sec = st.slider("Seconds of recording on this battery", 0, int(g["second"].max()), int(g["second"].max() // 2), step=5)
+                last = 5 * (int(g["second"].max()) // 5)                    # the slider moves in 5 s steps
+                sec = st.slider("Seconds of recording on this battery", 0, last, 5 * (last // 10), step=5)
                 state = g[g["second"] == sec].iloc[0]
         with right:
             st.subheader("Mission")
@@ -214,8 +215,9 @@ def page_fleet(tau: float, reveal: bool) -> None:
     c1, c2 = st.columns(2)
     c1.altair_chart(C.policy_bars(t, "unsafe_per_100_missions", "unsafe missions per 100 flown", fmt=".2f"), width="stretch")
     c2.altair_chart(C.policy_bars(t, "swaps_per_day", "battery swaps per day"), width="stretch")
-    st.caption("The margins for P1 and P2 were tuned on development data and applied here unchanged. "
-               "With its margin, the minutes-left rule is safe only because it refuses almost everything (11 of 40 tasks a day completed).")
+    st.caption("The two margins were tuned on development data and applied here unchanged. "
+               "With its margin, the minutes-left rule is safe only because it refuses almost everything "
+               f"({w['facts']['fleet_p1_margin_completed']:.0f} of 40 tasks a day completed).")
     with st.expander("Table"):
         st.dataframe(t[["policy", "unsafe_per_100_missions", "completed_per_day", "dropped_per_day", "swaps_per_day", "energy_left_at_swap_wh"]]
                      .round(2), hide_index=True, width="stretch")
@@ -228,63 +230,67 @@ def page_fleet(tau: float, reveal: bool) -> None:
     if st.button("Run the simulation", type="primary"):
         r = fleet_run(float(tau), drones, tasks, days)
         c1, c2 = st.columns(2)
-        c1.altair_chart(C.policy_bars(r, "unsafe_per_100_missions", "unsafe missions per 100 flown", fmt=".2f", height=200), width="stretch")
-        c2.altair_chart(C.policy_bars(r, "completed_per_day", "missions completed per day", height=200), width="stretch")
+        c1.altair_chart(C.policy_bars(r, "unsafe_per_100_missions", "unsafe missions per 100 flown", fmt=".2f"), width="stretch")
+        c2.altair_chart(C.policy_bars(r, "completed_per_day", "missions completed per day"), width="stretch")
         st.dataframe(r[["policy", "unsafe_per_100_missions", "completed_per_day", "dropped_per_day", "swaps_per_day"]].round(2),
                      hide_index=True, width="stretch")
         st.caption(f"EnduroSense uses the threshold in the sidebar (τ = {tau:.2f}). Fewer days means noisier numbers.")
 
 
 def page_results(tau: float, reveal: bool) -> None:
-    t = world()["tables"]
+    t, f = world()["tables"], world()["facts"]
+    word = f["number_word"]
     st.title("Results on the locked test set")
-    s = t["summary"]
-    st.write(f"{s['model_b']['flights']} flights and {s['model_a']['chains']} labelled batteries that no model, setting or calibration ever saw. "
-             "What would count as success was written down before the test set was opened. Two of the four criteria were met.")
-    crit = t["criteria"].assign(result=np.where(t["criteria"]["met"], "✔ Met", "✘ Not met"))
-    st.dataframe(crit[["criterion", "result", "evidence"]].rename(columns=str.capitalize), hide_index=True, width="stretch")
+    st.write(f"{f['test_flights']} flights and {f['labelled_batteries']} labelled batteries that no model, setting or calibration ever saw. "
+             f"What would count as success was written down before the test set was opened. "
+             f"{word(f['criteria_met']).capitalize()} of the {word(f['criteria_total'])} criteria were met.")
+    crit = t["criteria"].assign(result=[("✔ " if v == "Met" else "✘ ") + v for v in f["verdicts"]])
+    st.table(crit[["criterion", "result", "evidence"]].rename(columns=str.capitalize).set_index("Criterion"))
 
-    a = t["model_a"].set_index("model")
     pts = t["operating_points"]
-    p = pts[pts["pairs"] == "all pairs"].set_index("policy")["unsafe_approval_rate"]
-    b = t["model_b"][t["model_b"]["model"] == "Physics-first"].set_index("flights_group")["mape_pct"]
     c = st.columns(4)
-    c[0].metric("Energy available: error", f"{a.loc['GRU ensemble, calibrated (main)', 'test_mae_supported']:.2f} Wh",
-                f"{a.loc['GRU ensemble, calibrated (main)', 'vs_lookup_diff']:.2f} Wh vs best non-ML", delta_color="inverse")
-    c[1].metric("Energy required: error", f"{b['all test flights']:.1f}%", f"{b['unseen routes']:.1f}% on unseen routes", delta_color="off")
-    c[2].metric("Unsafe approvals, minutes-left", f"{p['P1 minutes left, as in the brief (ratio >= 1)']:.1%}")
-    c[3].metric("Unsafe approvals, EnduroSense", f"{p['P3 EnduroSense, tau = 0.95']:.2%}")
+    c[0].metric("Energy available: error", f"{f['a_main']:.2f} Wh", f"{f['a_main'] - f['a_lookup']:.2f} Wh vs best non-ML", delta_color="inverse")
+    c[1].metric("Energy required: error", f"{f['b_all']:.1f}%", f"{f['b_unseen']:.1f}% on unseen routes", delta_color="off")
+    c[2].metric("Unsafe approvals, minutes-left", f"{f['unsafe_p1']:.1%}")
+    c[3].metric("Unsafe approvals, EnduroSense", f"{f['unsafe_p3']:.2%}", help=f"At the default threshold τ = {f['tau']}.")
 
     st.subheader("Energy available (Model A)")
     st.altair_chart(C.cv_vs_test(t["model_a"]), width="stretch")
     r = t["model_a_ranges"].iloc[0]
     st.write(f"The main model's 90% range covered **{r['cov90']:.1%}** of test readings (target 88–92%; with {int(r['chains'])} batteries "
              f"the plausible band is {r['cov90_ci_low']:.0%}–{r['cov90_ci_high']:.0%}) and is {r['width90']:.1f} Wh wide on average. "
-             "A single GRU, the best model in cross-validation, was no better than the baseline on test; the five-network ensemble was.")
+             f"A single GRU, the best model in cross-validation ({f['a_gru_cv']:.2f} Wh), scored {f['a_gru']:.2f} Wh on test against "
+             f"{f['a_lookup']:.2f} Wh for the baseline; the five-network ensemble scored {f['a_main']:.2f} Wh.")
 
     st.subheader("Energy required (Model B)")
     mb = t["model_b"][t["model_b"]["model"] == "Physics-first"][["flights_group", "flights", "mape_pct", "mae_wh", "bias_wh"]]
     st.dataframe(mb.rename(columns={"flights_group": "Flights", "flights": "n", "mape_pct": "Error (%)", "mae_wh": "Error (Wh)", "bias_wh": "Bias (Wh)"}).round(2),
                  hide_index=True, width="stretch")
     rb = t["model_b_ranges"].iloc[0]
-    st.write(f"Its 90% range covered only **{rb['cov90']:.0%}** of test flights: too narrow on new data. On unseen, longer routes the model "
-             "over-predicts (the safe direction) and misses the 5% target.")
+    st.write(f"Its 90% range covered **{rb['cov90']:.0%}** of test flights against a 90% target. On unseen routes the error is "
+             f"{f['b_unseen']:.1f}%" + (" (over-predicted, the safe direction)." if f["b_unseen_all_over_predicted"] else "."))
 
     st.subheader("Decisions")
     c1, c2 = st.columns(2)
-    op = pts[(pts["pairs"] == "all pairs") & pts["policy"].str.contains("brief|margin >= 0|tau = 0.95|oracle")].copy()
-    op["policy"] = op["policy"].str.strip()
+    op = pts[pts["pairs"] == "all pairs"].assign(policy=lambda d: d["policy"].str.strip())
+    keep = op["policy"].str.contains("as in the brief|margin >= 0|oracle") | op["policy"].eq(f"P3 EnduroSense, tau = {f['tau']}") | (
+        op["policy"].str.startswith("P2 with margin") & op["policy"].str.contains(f"tau = {f['tau']} ", regex=False))
+    op = op[keep]
     c1.altair_chart(C.policy_bars(op.assign(pct=op["unsafe_approval_rate"] * 100), "pct", "unsafe approvals (% of missions that would fail)",
-                                  fmt=".2f", height=220), width="stretch")
+                                  fmt=".2f"), width="stretch")
+    c1.caption("The margin for best estimates was tuned on development data and applied to the test set unchanged.")
     c2.altair_chart(C.reliability_chart(t["reliability"]), width="stretch")
-    c2.caption("Is P(success) honest? On the dashed line, predicted and actual agree. Missions rated 95–99% succeeded 94% of the time: slightly over-confident.")
+    c2.caption(f"Is P(success) honest? On the dashed line, predicted and actual agree. Missions rated 95–99% (average {f['band_predicted']:.1%}) "
+               f"succeeded {f['band_succeeded']:.1%} of the time.")
 
     st.subheader("What did not hold up")
-    st.markdown("- **Mission model on unseen routes:** 5.7% error against a 5% target (over-predicted).\n"
-                "- **Mission model's ranges:** 80% coverage on test against a 90% target.\n"
-                "- **P(success) at the top:** slightly over-confident, because two batteries were over-estimated.\n"
-                "- **Probability vs a tuned margin:** best estimates plus a well-chosen fixed margin did as well over all cases. "
-                "The probability refused fewer feasible missions at take-off (25% against 32%) and needed no tuning.")
+    st.markdown(f"- **Mission model on unseen routes:** {f['b_unseen']:.1f}% error against a 5% target.\n"
+                f"- **Mission model's ranges:** {f['b_cov90']:.0%} coverage on test against a 90% target.\n"
+                f"- **P(success) at the top:** missions rated about {f['band_predicted']:.0%} succeeded {f['band_succeeded']:.0%} of the time. "
+                f"{word(f['a_batteries_over_estimated']).capitalize()} of {f['labelled_batteries']} batteries were over-estimated, and the unsafe approvals come from them.\n"
+                "- **Probability vs a tuned margin:** best estimates plus a fixed margin tuned in development did about as well over all cases "
+                f"({f['unsafe_p2_margin']:.2%} unsafe approvals against {f['unsafe_p3']:.2%}). At take-off the probability refused fewer feasible missions "
+                f"({f['wasted_p3_takeoff']:.0%} against {f['wasted_p2_margin_takeoff']:.0%}), and it needs no tuning.")
     st.subheader("Speed and size")
     st.dataframe(t["latency"].rename(columns={"model": "Model", "latency_ms": "One prediction (ms, laptop CPU, one thread)", "size_mb": "Size (MB)"}).round(2),
                  hide_index=True, width="stretch")
@@ -292,8 +298,9 @@ def page_results(tau: float, reveal: bool) -> None:
 
 
 def page_how(tau: float, reveal: bool) -> None:
+    f = world()["facts"]
     st.title("How it works")
-    st.markdown("""
+    st.markdown(f"""
 **The brief** asks for the remaining flight time of a UAV battery. Minutes are a weak basis for a go / no-go decision: the same battery
 lasts very different times depending on what it is asked to do next.
 
@@ -306,18 +313,26 @@ lasts very different times depending on what it is asked to do next.
 3. **P(success)** is the chance that the first energy covers the second. A mission is approved only if P(success) ≥ τ.
 
 **Data.** 209 flights of a DJI Matrice 100 (Carnegie Mellon University, 2021). Consecutive flights on one battery were linked into
-90 "battery chains". 16 chains were set aside before any modelling and used once, for the final results shown here.
+90 "battery chains". 16 chains ({f['test_flights']} flights) were set aside before any modelling and kept for the final results shown here.
 
 **What it can and cannot claim.**
-- Deciding on energy with a calibrated margin cut unsafe approvals from about 12% to under 1% on unseen batteries and flights.
-- One drone type, one battery type, 11 labelled test batteries. Ranges are wide for that reason.
+- Deciding on energy with a calibrated margin cut unsafe approvals from {f['unsafe_p1']:.1%} to {f['unsafe_p3']:.2%} on unseen batteries and flights.
+- One drone type, one battery type, {f['labelled_batteries']} labelled test batteries. Ranges are wide for that reason.
 - The risk is per battery: when the model over-estimates a battery, it does so for that battery's whole life.
 """)
-    st.caption("Reserve: 22.6 V at rest (about 3.77 V per cell). Threshold τ = 0.95 by default. Both are project defaults awaiting the guide's confirmation.")
+    st.caption(f"Reserve: {f['reserve_v']} V at rest (about {f['reserve_v'] / 6:.2f} V per cell). Threshold τ = {f['tau']} by default. "
+               "Both are project defaults awaiting the guide's confirmation.")
 
 
 # ------------------------------------------------------------------ layout
 def main() -> None:
+    missing = L.missing_inputs()
+    if missing:
+        st.title("EnduroSense")
+        st.error("The dashboard shows saved models and final results, and some of them are not here yet:\n\n"
+                 + "\n".join(f"- `{m}`" for m in missing) + "\n\nBuild them with `python scripts/run_all.py --final` (about 30 minutes), then reload.",
+                 icon=":material/error:")
+        st.stop()
     st.sidebar.title("EnduroSense")
     st.sidebar.caption("Can this battery fly this mission?")
     page = st.sidebar.radio("Page", PAGES, label_visibility="collapsed")

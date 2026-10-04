@@ -53,7 +53,7 @@ The cross-validation column is for development readings that have a pre-flight v
 | Readings where the model abstains | 3 chains | none |
 
 - **Coverage is slightly above the target band** and well inside what 11 batteries can show.
-- **All the misses are on the unsafe side and come from two batteries.** 9 of 11 test batteries were covered 100% of the time. Chain 70 was over-estimated for 58% of its readings and chain 86 for 13%. This is the pattern Phase 5 predicted: the error is a per-battery offset, so risk is per battery, not per moment.
+- **The unsafe-side misses all come from two batteries.** The other 9 of 11 test batteries were inside their range for at least 99.8% of their readings (8 of them for every reading; one had a single reading above its range). Chain 70 was over-estimated for 58% of its readings and chain 86 for 13%. This is the pattern Phase 5 predicted: the error is a per-battery offset, so risk is per battery, not per moment.
 - **The error is the model's, not the label's.** Chain 70's energy-to-reserve label is a measured one, and the model over-estimated it by 7.4 Wh on average (chain 86: 5.1 Wh, with an extrapolated label). On the other nine batteries the model was within 1.5 Wh on average, mostly slightly under.
 
 ## 2. Model B: energy a mission needs

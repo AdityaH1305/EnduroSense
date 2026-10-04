@@ -25,6 +25,9 @@ Nothing is trained in the dashboard. It loads the saved calibrated models and th
 - **The three-missions case is real and not hand-picked.** It is chosen by a fixed rule from the test data: the battery with the most missions that minutes-left approves and EnduroSense refuses, the refused mission with the median shortfall, and the smallest and largest approved missions.
 - **It shows a failure too.** One of the prepared examples is a case EnduroSense gets wrong.
 - **Structure:** `app/logic.py` holds everything the dashboard computes and contains no Streamlit code, so it is tested like any other module; `app/charts.py` builds the charts; `app/streamlit_app.py` is the pages.
+- **One source for the headline statements:** `logic.headline_facts()` reads the result files and supplies every result-dependent sentence ("two of four criteria met", "1 in 8", the verdicts) to the dashboard, the report and the slides.
+- **If the result files are missing** (a fresh clone), the dashboard names them and the command that builds them.
+- **What still needs a human read after a rerun:** the numbers and verdicts update themselves, but sentences that interpret them do not (for example "misses the 5% target, in the safe direction", or the explanation of why the long route is over-predicted). If a rerun changes a result materially, reread sections 5 and 6 of the report and slides 6, 9 and 11.
 - **Theme:** fixed to a light theme (`.streamlit/config.toml`), for projectors.
 
 ### The report and the slides (`docs/build/`)
@@ -48,12 +51,13 @@ Phase 8 added nothing under `src/` or `scripts/`. The code fingerprint still mat
 ## Limits
 
 - **The slides need PowerPoint to rebuild** (the script drives the installed application). The `.pptx` itself opens anywhere.
-- **Visual checks of the dashboard were partial.** The first two pages were inspected in a browser; all five pages, every prepared example, the reveal toggle, the threshold slider and the live fleet run are exercised headlessly by a test. A dry run on the presentation machine is still worth doing (`docs/demo_script.md`).
+- **A dry run on the presentation machine is still worth doing** (`docs/demo_script.md`). All five pages were inspected in a browser during verification pass 6, which found and fixed layout bugs the headless tests could not see.
 - **The dashboard shows test data.** That is deliberate (the evaluation is finished and nothing is tuned in the dashboard), but it means the examples are few: 11 batteries and 40 flights.
 
 ## Verification
 
-- `pytest`: **136 passed**; `pyflakes` clean on `src`, `scripts`, `tests`, `app` and `docs/build`.
+- `pytest`: **147 passed** after verification pass 6 (136 at the end of the phase); `pyflakes` clean on `src`, `scripts`, `tests`, `app` and `docs/build`.
+- **Verification pass 6** (see `docs/verification_log.md`): every result-dependent statement in the dashboard, report and slides now comes from one function (`headline_facts()`), so a rerun of the pipeline updates all three; chart layout bugs on two pages were fixed; mutation testing was run on the Phase 8 code and the gaps closed.
 - **New tests:**
   - the dashboard's scores equal the final evaluation's
   - the three-missions case is what the page says it is, and is deterministic

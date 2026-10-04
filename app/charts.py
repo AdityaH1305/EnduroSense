@@ -61,15 +61,37 @@ def battery_timeline(chain: pd.DataFrame, now_second: int, show_truth: bool, hei
     return alt.layer(band, zero, line, now).properties(height=height)
 
 
-def policy_bars(table: pd.DataFrame, value: str, title: str, highlight: str = "P3", fmt: str = ".1f", height: int = 240) -> alt.Chart:
-    """One horizontal bar per policy; EnduroSense in blue, the others grey, values written on the bars."""
-    df = table.assign(kind=np.where(table["policy"].str.startswith(highlight), "EnduroSense", "other rule"))
+def short_policy(name: str) -> str:
+    """A short row label for a policy as named in the result tables."""
+    n = name.strip()
+    if n.startswith("P3"):
+        return "EnduroSense"
+    if n.startswith("P4"):
+        return "Oracle (knows the truth)"
+    margin = "margin" in n and "margin >= 0" not in n
+    if n.startswith("P1"):
+        return "Minutes left + margin" if margin else "Minutes left (the brief)"
+    if n.startswith("P2"):
+        return "Best estimates + margin" if margin else "Energy, best estimates"
+    return n
+
+
+def policy_bars(table: pd.DataFrame, value: str, title: str, fmt: str = ".1f") -> alt.Chart:
+    """One horizontal bar per policy; EnduroSense in blue, the others grey, values written beside the bars.
+    Every row keeps its label, and the axis leaves room for the value labels."""
+    df = table.assign(rule=table["policy"].map(short_policy),
+                      kind=np.where(table["policy"].str.strip().str.startswith("P3"), "EnduroSense", "other rule"))
+    top = float(df[value].max())
+    x = alt.X(f"{value}:Q", title=title, scale=alt.Scale(domain=[0, top * 1.18 if top > 0 else 1]))
+    y = alt.Y("rule:N", sort=None, title=None, axis=alt.Axis(labelLimit=260, labelOverlap=False, labelFontSize=12))
     bars = alt.Chart(df).mark_bar(cornerRadiusEnd=4, height=18).encode(
-        x=alt.X(f"{value}:Q", title=title), y=alt.Y("policy:N", sort=None, title=None, axis=alt.Axis(labelLimit=320)),
-        color=alt.Color("kind:N", scale=alt.Scale(domain=["EnduroSense", "other rule"], range=[BATTERY, NEUTRAL]), legend=alt.Legend(title=None, orient="top")),
-        tooltip=[alt.Tooltip("policy:N"), alt.Tooltip(f"{value}:Q", format=fmt, title=title)])
-    text = bars.mark_text(align="left", dx=4, color="#52514e").encode(text=alt.Text(f"{value}:Q", format=fmt), color=alt.value("#52514e"))
-    return (bars + text).properties(height=height)
+        x=x, y=y,
+        color=alt.Color("kind:N", scale=alt.Scale(domain=["EnduroSense", "other rule"], range=[BATTERY, NEUTRAL]),
+                        legend=alt.Legend(title=None, orient="top", labelLimit=300)),
+        tooltip=[alt.Tooltip("policy:N", title="rule"), alt.Tooltip(f"{value}:Q", format=fmt, title=title)])
+    text = alt.Chart(df).mark_text(align="left", dx=5, color="#52514e", fontSize=12).encode(x=x, y=y, text=alt.Text(f"{value}:Q", format=fmt))
+    # Streamlit treats the height as the whole chart (legend and axis included), so leave room for those
+    return (bars + text).properties(height=32 * len(df) + 95)
 
 
 def reliability_chart(rel: pd.DataFrame, height: int = 300) -> alt.Chart:
@@ -93,5 +115,5 @@ def cv_vs_test(table: pd.DataFrame, height: int = 330) -> alt.Chart:
         y=alt.Y("model:N", sort=t["model"].tolist(), title=None, axis=alt.Axis(labelLimit=260)),
         yOffset=alt.YOffset("data:N", sort=["test (unseen batteries)", "development (cross-validation)"]),
         color=alt.Color("data:N", scale=alt.Scale(domain=["test (unseen batteries)", "development (cross-validation)"], range=[BATTERY, NEUTRAL]),
-                        legend=alt.Legend(title=None, orient="top")),
+                        legend=alt.Legend(title=None, orient="top", labelLimit=400)),
         tooltip=[alt.Tooltip("model:N"), alt.Tooltip("data:N", title=" "), alt.Tooltip("Wh:Q", format=".2f")]).properties(height=height)

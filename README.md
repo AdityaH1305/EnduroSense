@@ -59,7 +59,7 @@ python docs/build/build_report.py         # rebuilds docs/EnduroSense_Final_Repo
 python docs/build/build_slides.py         # rebuilds docs/EnduroSense_Slides.pptx (needs Microsoft PowerPoint)
 ```
 
-A walkthrough for presenting the dashboard is in [docs/demo_script.md](docs/demo_script.md).
+Run all three from the project folder. The dashboard needs the outputs of `python scripts/run_all.py --final`; if any are missing it says which. A walkthrough for presenting it is in [docs/demo_script.md](docs/demo_script.md).
 
 ## Results
 

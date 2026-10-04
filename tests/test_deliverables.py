@@ -2,11 +2,15 @@
 import importlib.util
 import json
 import re
+import sys
 
 import pandas as pd
 import pytest
 
 from endurosense.config import ROOT, data_path
+
+sys.path.insert(0, str(ROOT / "app"))
+import logic as L  # noqa: E402  (the facts the deliverables are built from)
 
 FINAL = data_path("results") / "final"
 pytestmark = [pytest.mark.data, pytest.mark.skipif(not (FINAL / "success_criteria.csv").exists(), reason="run scripts/run_all.py --final first")]
@@ -40,6 +44,13 @@ def test_report_builds_and_quotes_the_final_results(tmp_path):
     met_in_report = [row.cells[1].text for row in doc.tables[0].rows[1:]]
     assert [m == "Met" for m in met_in_report] == crit["met"].tolist()          # the verdicts are the evaluation's, not the author's
     assert len(doc.tables) == 5 and len(doc.inline_shapes) == 4                    # five tables, four figures
+    fleet = pd.read_csv(FINAL / "fleet_simulation.csv").set_index("policy")["unsafe_per_100_missions"]
+    cells = [row.cells[1].text for row in doc.tables[4].rows[1:]]                  # unsafe missions per 100: one decimal above 1, two below
+    assert cells[0] == f"{fleet['P1 minutes left (brief)']:.1f}" and cells[3] == f"{fleet['P3 EnduroSense (tau = 0.95)']:.2f}"
+    facts = L.headline_facts()
+    assert [row.cells[1].text for row in doc.tables[0].rows[1:]] == facts["verdicts"]
+    assert f"{facts['number_word'](facts['verification_passes']).capitalize()} verification passes" in text
+    assert f"{facts['a_gru_cv']:.2f} Wh" in text and "judged once" not in text
     assert "**" not in text and "`" not in text                                   # no stray markup
 
 
@@ -62,4 +73,9 @@ def test_slides_specification_is_complete_and_within_the_slide(tmp_path, monkeyp
     pts = pd.read_csv(FINAL / "operating_points.csv")
     p3 = pts[(pts["pairs"] == "all pairs") & (pts["margins"] == "tuned on development data") & (pts["policy"] == "P3 EnduroSense, tau = 0.95")]
     assert f"{100 * p3['unsafe_approval_rate'].iloc[0]:.2f}%" in everything
-    assert re.search(r"NO-GO: EnduroSense", everything) and everything.count("GO: EnduroSense") == 3   # two approvals, one refusal
+    boxes = [e["text"] for e in deck[7]["elements"] if e["type"] == "box"]
+    assert boxes == ["GO: EnduroSense", "NO-GO: EnduroSense", "GO: EnduroSense"]   # the middle mission is the one refused
+    lead = next(e for s in deck for e in s["elements"] if e["type"] == "text" and e["text"].startswith("The brief:"))
+    bold = [lead["text"][a - 1:a - 1 + n] for a, n in lead["bold_ranges"]]          # positions are 1-based, as PowerPoint counts
+    assert bold == ["The brief:", "The trouble with minutes:", "A single number hides how sure it is."]
+    assert re.search(r"1 in \d+ missions", everything) and "verification passes" in everything

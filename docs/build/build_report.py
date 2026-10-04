@@ -7,6 +7,7 @@ development phases), so the document cannot drift from the tables. Figures are t
 ones the pipeline saved. Nothing is computed from data here.
 """
 import json
+import sys
 
 import pandas as pd
 from docx import Document
@@ -18,6 +19,9 @@ from docx.shared import Cm, Pt, RGBColor
 
 from endurosense.config import ROOT, data_path, load_config
 from endurosense.data.split import load_split
+
+sys.path.insert(0, str(ROOT / "app"))
+import logic as L  # noqa: E402  (headline facts shared with the dashboard and the slides)
 
 RES, FIN = data_path("results"), data_path("results") / "final"
 OUT = ROOT / "docs" / "EnduroSense_Final_Report.docx"
@@ -164,7 +168,8 @@ pct = lambda x, d=1: f"{100 * x:.{d}f}%"
 
 # ------------------------------------------------------------------ the report
 def build(out=OUT) -> None:
-    n, r = numbers(), Report()
+    n, r, f = numbers(), Report(), L.headline_facts()
+    word = f["number_word"]
     cfg, a, ar, bm, br, op, fleet = n["cfg"], n["a"], n["ar"], n["bm"], n["br"], n["op"], n["fleet"]
     tau, reserve = cfg["decision"]["tau"], cfg["battery"]["reserve_v"]
     MAIN = "GRU ensemble, calibrated (main)"
@@ -199,7 +204,7 @@ def build(out=OUT) -> None:
                f"the mission. A mission is approved only if P(success) is at least {tau:.0%}."])
     split = load_split()
     roles = pd.Series(split["flight_role"])
-    r.p(f"Everything was built on {int((roles == 'dev').sum())} flights of a DJI Matrice 100 and judged once on a locked test set of "
+    r.p(f"Everything was built on {int((roles == 'dev').sum())} flights of a DJI Matrice 100 and judged on a locked test set of "
         f"{int((roles == 'test').sum())} flights ({len(split['test_chains'])} battery chains) that no model, "
         "setting or calibration ever saw. What would count as success was written down before that test set was opened.")
     r.h("Main results on the test set", 2)
@@ -215,12 +220,11 @@ def build(out=OUT) -> None:
         f"{f_p3['unsafe_per_100_missions']:.2f} with EnduroSense."])
     r.h("Success criteria", 2)
     crit = n["crit"]
-    verdict = ["Met", "Not met", "Not met, within sampling noise", "Met"]
     r.table(["Criterion (fixed before the test)", "Result", "Evidence"],
-            [[c["criterion"], v, c["evidence"]] for (_, c), v in zip(crit.iterrows(), verdict)], [5.6, 2.7, 8.1],
+            [[c["criterion"], v, c["evidence"]] for (_, c), v in zip(crit.iterrows(), f["verdicts"])], [5.6, 2.7, 8.1],
             caption="The four success criteria and their outcome on the test set.", align_right_from=9)
-    r.p("Two criteria were met and two were not. Section 6 says plainly what did not hold up. The largest and most robust gain is "
-        "from deciding on energy with a calibrated safety margin instead of on minutes.")
+    r.p(f"{word(f['criteria_met']).capitalize()} of the {word(f['criteria_total'])} criteria were met. Section 6 says plainly what did not hold up. "
+        "The largest and most robust gain is from deciding on energy with a calibrated safety margin instead of on minutes.")
 
     # ---- 2 problem
     r.h("2. The problem and the idea")
@@ -252,13 +256,12 @@ def build(out=OUT) -> None:
     # ---- 4 method
     r.h("4. Method")
     r.h("4.1 Model A: energy available", 2)
-    cv = n["cv"]
     r.p("Model A reads the battery once per second: voltage, current, power, short rolling statistics, energy drawn so far, the rest voltage "
         "before the flight, and the last minute of readings as a sequence. Every input uses only the past.")
     r.p(f"All five algorithms in the brief were compared with grouped cross-validation, together with three baselines that need no machine "
-        f"learning. GRU ({cv.loc['GRU', 'cv_mae']:.2f} Wh) and LSTM ({cv.loc['LSTM', 'cv_mae']:.2f} Wh) were the only models clearly better than "
-        f"a fair voltage-lookup baseline ({cv.loc['Voltage lookup', 'cv_mae']:.2f} Wh); Random Forest, Linear Regression and XGBoost were about "
-        f"{cv.loc['Random Forest', 'cv_mae']:.1f} Wh. Every model predicts one reading in about 5 ms or less on a laptop CPU.")
+        f"learning. On readings with a pre-flight voltage, GRU ({f['a_gru_cv']:.2f} Wh) and LSTM ({f['a_lstm_cv']:.2f} Wh) were the most accurate, "
+        f"against {f['a_lookup_cv']:.2f} Wh for a fair voltage-lookup baseline; Random Forest, Linear Regression and XGBoost were between "
+        f"{f['a_tabular_cv'][0]:.1f} and {f['a_tabular_cv'][1]:.1f} Wh. Every model predicts one reading in {f['latency_ms']} ms or less on a laptop CPU.")
     r.p("The final Model A is an ensemble of five GRUs, each predicting a value and a spread. The model declines to answer when no pre-flight "
         "voltage reading exists, because its errors there are several times larger.")
     r.h("4.2 Model B: energy required", 2)
@@ -306,8 +309,9 @@ def build(out=OUT) -> None:
                f"**A single GRU did not.** Best in cross-validation ({a.loc['GRU', 'cv_mae_supported']:.2f} Wh), it scored {a.loc['GRU', 'test_mae_supported']:.2f} Wh "
                "on test, no better than the baseline. Averaging five networks is what made the result dependable.",
                f"**Ranges:** the 90% range covered {pct(ar['cov90'])} of test readings (plausible band with {int(ar['chains'])} batteries: "
-               f"{pct(ar['cov90_ci_low'], 0)}–{pct(ar['cov90_ci_high'], 0)}). All misses were on two batteries whose capacity the model over-estimated; "
-               "the other nine were inside their range throughout. The risk is per battery, not per moment."])
+               f"{pct(ar['cov90_ci_low'], 0)}–{pct(ar['cov90_ci_high'], 0)}). Almost all the misses were on {word(f['a_batteries_over_estimated'])} batteries "
+               f"whose capacity the model over-estimated; the other {word(f['a_batteries_covered'])} were inside their range for at least "
+               f"{pct(f['a_min_coverage_of_covered'])} of their readings. The risk is per battery, not per moment."])
     r.figure(FIN / "figures" / "model_a_cv_vs_test.png", "Model A: cross-validation error against test error, per model.", 14.5)
     r.h("5.2 Energy required", 2)
     rows = [["Cross-validation (development)", "153", f"{mc.loc['Physics-first', 'mape_pct']:.2f}%", f"{mc.loc['Physics-first', 'mae_wh']:.2f}"]]
@@ -317,7 +321,7 @@ def build(out=OUT) -> None:
     r.table(["Flights", "n", "Error", "Error (Wh)"], rows, [7.0, 1.6, 2.6, 2.6], caption="Model B mission-energy error.", bold_rows=(1,))
     b0 = br.loc["Physics-first, calibrated: all test flights"]
     r.bullets([f"**On the trained route the model generalises** to new batteries and days ({bm.loc['route seen in development', 'mape_pct']:.1f}%).",
-               "**On unseen routes it misses the 5% target, in the safe direction:** all 7 flights were over-predicted. The excess is in the cruise "
+               f"**On unseen routes it misses the 5% target, in the safe direction:** all {f['b_unseen_flights']} flights were over-predicted. The excess is in the cruise "
                "legs of a route about 45% longer than any flown in development.",
                f"**Its ranges were too narrow on test:** {pct(b0['cov90'], 0)} coverage against a 90% target. Most misses on the trained route are at "
                "100 m altitude, a weak spot already flagged during development."])
@@ -340,7 +344,7 @@ def build(out=OUT) -> None:
                f"that would fail; EnduroSense about 1 in {round(1 / allp.loc[P3, 'unsafe_approval_rate'], -1):.0f}, and none at take-off decisions.",
                f"**The price is caution.** EnduroSense refuses {pct(allp.loc[P3, 'wasted_refusal_rate'], 0)} of missions that would have succeeded. These are "
                f"close calls: their median true margin was {m['refused_margin_wh_median']:.1f} Wh.",
-               f"**Minutes-left cannot be rescued with a margin.** To reach the same safety it must refuse {pct(allp.loc[p1m, 'wasted_refusal_rate'], 0)} of feasible missions.",
+               f"**Minutes-left cannot be rescued with a margin.** With the margin that made it as safe in development, it refuses {pct(allp.loc[p1m, 'wasted_refusal_rate'], 0)} of feasible missions.",
                f"**Point estimates plus a fixed margin did as well over all cases.** At take-off decisions the probability refused fewer feasible missions "
                f"({pct(pre.loc[P3, 'wasted_refusal_rate'], 0)} against {pct(pre.loc[p2m_pre, 'wasted_refusal_rate'], 0)}) at the same safety, and it needed no tuning.",
                f"**Is P(success) honest?** Mostly: missions rated 95–99% succeeded {pct(band['observed_success'])} of the time, slightly over-confident, "
@@ -350,7 +354,8 @@ def build(out=OUT) -> None:
     r.h("5.4 Fleet simulation", 2)
     r.p(f"Four drones work through 40 tasks a day for 200 simulated days. Each battery is one of {int(f_p3['batteries'])} real unseen batteries and each "
         "task is a real recorded flight or pair of sorties; only the pairing is simulated.")
-    rows = [[lab, f"{row['unsafe_per_100_missions']:.2f}", f"{row['completed_per_day']:.1f}", f"{row['swaps_per_day']:.1f}"]
+    per100 = lambda x: f"{x:.1f}" if x >= 1 else f"{x:.2f}"
+    rows = [[lab, per100(row["unsafe_per_100_missions"]), f"{row['completed_per_day']:.1f}", f"{row['swaps_per_day']:.1f}"]
             for lab, row in (("Minutes left (the brief)", f_p1), ("Energy, point estimates", f_p2),
                              ("Point estimates + development margin", f_p2m), (f"EnduroSense, τ = {tau}", f_p3), ("Oracle", fleet.loc["P4 oracle"]))]
     r.table(["Rule", "Unsafe missions per 100 flown", "Completed per day (of 40)", "Battery swaps per day"], rows, [6.2, 3.4, 3.4, 3.0],
@@ -363,10 +368,12 @@ def build(out=OUT) -> None:
     # ---- 6 what held, what did not
     r.h("6. What held up and what did not")
     r.h("Supported by the test set", 2)
-    r.bullets(["A calibrated GRU ensemble estimates energy to reserve to about 2.2 Wh (about 3% of a pack’s usable energy) on unseen batteries "
-               "and beats a fair baseline without machine learning.",
-               "Mission energy is predicted to about 3% for the kind of mission flown in training.",
-               "Deciding on energy with a calibrated margin cuts unsafe approvals from about 12% to under 1%, and to zero at take-off decisions.",
+    takeoff = "to zero" if f["unsafe_p3_takeoff"] == 0 else f"to {pct(f['unsafe_p3_takeoff'], 2)}"
+    r.bullets([f"A calibrated GRU ensemble estimates energy to reserve to about {f['a_main']:.1f} Wh on unseen batteries "
+               f"and beats a fair baseline without machine learning ({f['a_lookup']:.1f} Wh).",
+               f"Mission energy is predicted to about {f['b_seen']:.0f}% for the kind of mission flown in training.",
+               f"Deciding on energy with a calibrated margin cuts unsafe approvals from about {pct(f['unsafe_p1'], 0)} to {pct(f['unsafe_p3'], 1)}, "
+               f"and {takeoff} at take-off decisions.",
                "The method is honest about what it does not know: the unsafe cases trace to two batteries the model over-estimated, the "
                "per-battery risk identified during development."])
     r.h("Not supported, and not claimed", 2)
@@ -378,7 +385,8 @@ def build(out=OUT) -> None:
 
     # ---- 7 limitations
     r.h("7. Limitations")
-    r.bullets(["**Small test set.** 11 labelled batteries and 40 flights from one drone and one battery type. Every interval is wide for that reason.",
+    r.bullets([f"**Small test set.** {f['labelled_batteries']} labelled batteries and {f['test_flights']} flights from one drone and one battery type. "
+               "Every interval is wide for that reason.",
                "**The truth itself has error.** The energy-to-reserve label comes from rest voltages and is uncertain by about 1.5–2 Wh.",
                "**Decisions were not flown.** They were evaluated by pairing real battery states with real recorded missions.",
                "**Settings await confirmation.** The reserve (22.6 V) and threshold (0.95) are defaults; the guide has not yet confirmed them.",
@@ -391,7 +399,7 @@ def build(out=OUT) -> None:
                "caches reproduced all 74 result files and all 19 model files byte for byte.",
                "**The test set is gated and logged.** Test data can only be read by the final-evaluation script; every opening is recorded, and a rerun "
                "on changed code needs a stated reason.",
-               "**Five verification passes** re-checked finished phases adversarially: independent recomputation of headline numbers, a search for "
+               f"**{word(f['verification_passes']).capitalize()} verification passes** re-checked finished phases adversarially: independent recomputation of headline numbers, a search for "
                "leakage, and mutation testing (deliberately breaking the code to confirm that a test fails). What each pass found and fixed is in "
                "docs/verification_log.md.",
                "**Tests:** the automated test suite covers the data pipeline, both models, calibration, decisions, the final script and the dashboard."])
@@ -413,10 +421,11 @@ def build(out=OUT) -> None:
                "**Learn each battery.** The error is a per-battery offset, so a model that updates its estimate of a battery’s capacity after each "
                "flight should narrow the ranges and remove the per-battery risk.",
                "**Widen Model B’s ranges for missions outside its training routes,** using route length as an input to the range.",
-               "**On-board timing** on a companion computer (for example a Raspberry Pi); on a laptop CPU every model predicts in about 5 ms or less.",
+               f"**On-board timing** on a companion computer (for example a Raspberry Pi); on a laptop CPU every model predicts in {f['latency_ms']} ms or less.",
                "**Confirm the reserve and threshold** with the guide; both are single settings and the pipeline reruns in half an hour."])
 
     r.doc.core_properties.title = "EnduroSense: Final Report"
+    r.doc.core_properties.author = "EnduroSense project"
     r.doc.core_properties.subject = "Uncertainty-aware mission feasibility prediction for UAVs"
     out.parent.mkdir(parents=True, exist_ok=True)
     r.doc.save(out)

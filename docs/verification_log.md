@@ -153,3 +153,35 @@ Because items 1, 3, 4 and 5 changed files covered by the code fingerprint, the f
 - `pyflakes`: clean.
 - The code on disk matches the last entry of the test access log.
 
+## Pass 6: Phase 8 (2026-10-04)
+
+The dashboard, the report and the slides. Nothing under `src/` or `scripts/` was changed, so the test set was not reopened.
+
+| # | Found | Severity | Fix |
+|---|---|---|---|
+| 1 | **Result-dependent statements were typed in by hand** in all three deliverables: the criterion verdicts (including "within sampling noise"), "two of four criteria met", "1 in 8", "from 12% to under 1%", "9 in 10", "five verification passes", "25% against 32%" and others. If the guide changes the reserve or the threshold and the pipeline is rerun, they would have gone stale silently | Medium (latent) | One function, `headline_facts()` in `app/logic.py`, derives every such statement from the result files. The dashboard, the report and the slides all read from it |
+| 2 | **Dashboard layout bugs that the headless tests could not see.** On the Fleet and Results pages the policy bar charts dropped half their row labels, clipped the value labels, and (on Results) included rows that did not belong; the criteria table cut off its evidence column | Medium | Short row labels, every label kept, room left for the values, the right rows selected, a wrapping table. Found by looking at every page in a browser; a regression test now checks the chart's rows, labels and height |
+| 3 | **The report quoted two different cross-validation errors for the same model** (GRU 2.61 Wh in section 4, 2.39 Wh in section 5): one over all development readings, one over comparable readings | Medium (reporting) | Section 4 now uses the comparable figures, like the results tables |
+| 4 | **"The other nine batteries were inside their range throughout" was not quite true.** Eight were; one had a single reading above its range. The same slip was in the Phase 7 results summary and notes ("covered 100% of the time") | Low (reporting) | Corrected in the report, the results summary and the Phase 7 notes: at least 99.8% of their readings |
+| 5 | "Judged once" and "opened once" in the report and slides, although the access log has two entries | Low (reporting) | Reworded: the evaluation, and one rerun after verification with identical numbers |
+| 6 | The dashboard failed with a traceback when the result files were missing (a fresh clone) | Low | It now names the missing files and the command that builds them |
+| 7 | The report's fleet table showed 12.03 where every other document shows 12.0; two speaker notes overstated ("Model A's ranges held", "does about as well") ; the report's document author was the library's name | Low | Fixed |
+| 8 | **Mutation testing: 9 of 35 deliberate bugs in the Phase 8 code were not caught** (the margin rule, one example's selection, GO / NO-GO labels in the app and on a slide, a chart's rows, bold-span positions, a table format, the take-off selector) | Medium (latent) | Tests added; all 35 are now caught |
+
+### Checked and confirmed correct (no change needed)
+
+- **Every decimal number in the report and in the slides (with speaker notes) traces to a result file.**
+- **The dashboard's scores equal the final evaluation's** on all 2,550 take-off combinations (P(success) differs by 0.0).
+- **A planned mission and a recorded mission go through the same model:** entering a recorded flight's plan by hand gives the saved prediction exactly (largest difference 0.000 Wh over 40 flights).
+- **The duration estimate used by the minutes-left rule for planned missions is accurate:** 0.05 min average error against the true airborne time; it changes that rule's verdict in 11 of 1,200 combinations.
+- **Slider extremes behave:** quantiles stay ordered, probabilities stay within 0 to 1, out-of-range warnings appear, and the three-missions case exists at thresholds 0.80, 0.90 and 0.99.
+- **Every step of the demo script was run** (for example, the decision flips to NO-GO near 600 m per leg while minutes-left still says GO).
+- **All five pages were inspected in a browser** after the fixes, including the live fleet run.
+- **The code fingerprint is unchanged:** the dashboard and the builders live outside `src/` and `scripts/`.
+
+### Status after pass 6
+
+- `pytest`: **147 passed**.
+- `pyflakes`: clean on `src`, `scripts`, `tests`, `app` and `docs/build`.
+- The code on disk matches the last entry of the test access log.
+
