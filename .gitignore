@@ -34,3 +34,11 @@ Thumbs.db
 
 # Office lock files
 ~$*
+
+# Generated while building the report and slides (charts, slide previews, the slide specification)
+docs/build/_figures/
+docs/build/_preview/
+docs/build/_slides_spec.json
+
+# Local tool settings
+.claude/

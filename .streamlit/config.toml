@@ -1,0 +1,7 @@
+# The dashboard is designed for a light surface (projector-friendly); charts use the project's palette.
+[theme]
+base = "light"
+primaryColor = "#2a78d6"
+
+[browser]
+gatherUsageStats = false

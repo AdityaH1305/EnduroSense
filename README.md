@@ -51,9 +51,19 @@ python scripts/09_final_test.py --final   # Phase 7 final evaluation on the lock
 
 Test data is locked: `endurosense.data.split.select(df, "test")` raises unless `final=True`. Only `09_final_test.py --final` reads it. Every opening is logged in `results/final/test_access_log.json`; if code or settings changed since the last opening, the script asks for a `--reason`. `09_final_test.py --rehearsal` runs the same code on development rows without opening anything.
 
+## Dashboard, report and slides
+
+```bash
+streamlit run app/streamlit_app.py        # the dashboard (loads saved models and final results; trains nothing)
+python docs/build/build_report.py         # rebuilds docs/EnduroSense_Final_Report.docx from the result files
+python docs/build/build_slides.py         # rebuilds docs/EnduroSense_Slides.pptx (needs Microsoft PowerPoint)
+```
+
+A walkthrough for presenting the dashboard is in [docs/demo_script.md](docs/demo_script.md).
+
 ## Results
 
-The final results on the test set, including what did not hold up, are in [docs/results_summary.md](docs/results_summary.md).
+The final results on the test set, including what did not hold up, are in [docs/results_summary.md](docs/results_summary.md) and, as a document, in [docs/EnduroSense_Final_Report.docx](docs/EnduroSense_Final_Report.docx).
 
 | | Test result |
 |---|---|
@@ -81,9 +91,10 @@ src/endurosense/     the Python package
   access.py          log of every opening of the locked test set
   plots.py           shared figure style
 scripts/             numbered pipeline steps
+app/                 Streamlit dashboard: logic.py (no Streamlit, tested), charts.py, streamlit_app.py
 tests/               unit and data-regression tests
-docs/                plan, implementation plan, results summary, evaluation protocol, data report, chain review,
-                     verification log, literature, phase notes
+docs/                plan, implementation plan, final report, slides, demo script, results summary, evaluation protocol,
+                     data report, chain review, verification log, literature, phase notes; build/ makes the report and slides
 config/              manual decisions (chain_overrides.yaml)
 results/             generated tables and figures, per phase
 data/                raw/ (not versioned), processed/, splits/
