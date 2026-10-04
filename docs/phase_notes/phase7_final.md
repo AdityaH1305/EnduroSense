@@ -1,7 +1,7 @@
 # Phase 7: Final locked-test evaluation and reproducibility
 
 **Status:** complete (2026-10-04).
-**Reproduce:** `python scripts/run_all.py --final` (about 25 minutes on mains power with a GPU; the development steps alone are `python scripts/run_all.py`)
+**Reproduce:** `python scripts/run_all.py --final` (about 30 minutes from scratch on mains power with a GPU; the development steps alone are `python scripts/run_all.py`)
 **Outputs:** `results/final/`, the summary in [`docs/results_summary.md`](../results_summary.md), the protocol in [`docs/final_evaluation_protocol.md`](../final_evaluation_protocol.md)
 
 The results themselves are in the results summary. This note records how the evaluation was run and what was checked.
@@ -15,10 +15,14 @@ The results themselves are in the results summary. This note records how the eva
 3. **Rehearsal.** `scripts/09_final_test.py --rehearsal` ran the whole evaluation on development readings (fold 0) to find coding errors without opening the test set. Its outputs were deleted.
 4. **The test set was opened once** (`--final`, 2026-10-04 11:13). Nothing was fitted, tuned or calibrated: the script loads the models built in step 1.
 5. **Reproducibility of the final step:** a second `--final` run gave 20 byte-identical output files and identical console output, and added nothing to the access log.
+6. **Verification pass 5** (see `docs/verification_log.md`):
+   - A second complete rebuild with **empty caches**, as the single command `run_all.py --final` (30 minutes), reproduced all 74 result files, all 19 model files and every data table byte for byte.
+   - The pass changed reporting code only, so the final evaluation was rerun once with a logged reason (fingerprint `68021ebc62ad50ff`). Every test number was identical; the changes are a like-for-like cross-validation column, the main model in the comparison figure, and a list of the evaluated files in `summary.json`.
 
 ## How the test set is protected
 
-- `select(df, "test")` still raises unless `final=True`; only `scripts/09_final_test.py --final` passes it.
+- `select(df, "test")` still raises unless `final=True`; only `scripts/09_final_test.py --final` passes it. An old environment-variable way around the gate (never used) was removed in verification pass 5.
+- `results/final/summary.json` lists a content hash of every model file and feature table that was scored.
 - **Every opening is logged** (`results/final/test_access_log.json`) with a fingerprint of all source files, scripts, configuration and the split (`endurosense/access.py`).
   - Same fingerprint: a reproducibility rerun; nothing is added.
   - Changed fingerprint: the script refuses to run unless `--reason "..."` is given, and the reason is logged.
@@ -60,9 +64,9 @@ Development against test, the figures that matter most:
 
 ## What the test set taught us
 
-1. **The ensemble was the right call.** The single GRU that won cross-validation was no better than the baseline on test (2.81 Wh); the 5-network ensemble was the best model (2.19 Wh).
+1. **The ensemble was the right call.** The single GRU that won cross-validation (2.39 Wh on comparable readings) was no better than the baseline on test (2.81 Wh); the 5-network ensemble was the best model (2.19 Wh).
 2. **Risk is per battery, as predicted.** 9 of 11 test batteries were inside their range 100% of the time. Two were over-estimated, and all 71 of EnduroSense's unsafe approvals involve those two.
-3. **Model B's weak spots were the ones already flagged.** The 100 m altitude under-prediction (Phase 5) accounts for 4 of the 6 seen-route misses, and distance extrapolation (Phase 4) for the unseen-route error.
+3. **Model B's weak spots were the ones already flagged.** The 100 m altitude under-prediction (Phase 5) accounts for 4 of the 6 seen-route misses. The unseen-route error is an over-prediction of the cruise legs on a route about 45% longer than any in development (Phase 4 had flagged distance as untested).
 4. **Model B's ranges are too narrow on new data** (80% against 90%). A cautious user should widen them; the multi-sortie ranges, which are deliberately cautious, did cover 91%.
 5. **Energy with a calibrated margin is what matters; the probability form adds little that can be measured here.** Point estimates plus a development-tuned margin matched EnduroSense over all pairs. The probability refused fewer feasible missions at pre-flight states (25% against 32%) and needed no tuning.
 6. **The link between the two models' errors is stronger than development suggested** (+0.43 against +0.16), still in the safe direction.
@@ -74,7 +78,7 @@ Development against test, the figures that matter most:
 
 ## Verification
 
-- `pytest`: **115 passed**; `pyflakes` clean.
+- `pytest`: **126 passed** after verification pass 5 (115 at the end of the phase); `pyflakes` clean.
 - **New tests:**
   - every opening of the test set is logged, an unchanged rerun adds nothing, and a changed rerun needs a reason
   - missions for unseen flights use the given (development) error sets and share one error set across sorties

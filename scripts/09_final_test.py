@@ -29,7 +29,7 @@ import pandas as pd
 
 from endurosense import decision_plots as DP
 from endurosense import whatif as W
-from endurosense.access import ReasonRequired, code_fingerprint, register_opening
+from endurosense.access import ReasonRequired, artefact_hashes, code_fingerprint, register_opening
 from endurosense.config import data_path, load_config, set_seed
 from endurosense.data.load import load_processed
 from endurosense.data.split import DEV, TEST, load_split, select
@@ -84,6 +84,12 @@ def range_summary(name, y, qv, levels, chains) -> dict:
 # ------------------------------------------------------------------ Model A
 def model_a(ev, dev, windows, levels, target, out):
     cv = pd.read_csv(data_path("results") / "model_a" / "cv_metrics.csv")
+    # cross-validation error on development readings *with* a pre-flight voltage: the like-for-like reference,
+    # because the main model abstains without one (and the test set happens to contain no such readings)
+    cv_sup = pd.read_csv(data_path("results") / "model_a" / "mae_known_rest_voltage.csv").set_index("model")["known_preflight_voltage"].to_dict()
+    cv_main = pd.read_csv(data_path("results") / "uncertainty" / "model_a_intervals.csv").set_index("method").loc[
+        "Calibrated, per-reading spread (main)", "mae_median"]
+    cv_sup[MAIN_A] = float(cv_main)
     y, chains, sup = ev[target].to_numpy(), ev["battery_chain"].to_numpy(), UA.supported(ev)
     air_w = float(dev.loc[dev["motors_on"] == 1, "p"].median())          # typical flying power, from development data
     flying = (ev["motors_on"].to_numpy() == 1) & (ev["p_mean_30s"].to_numpy() >= 100)
@@ -105,6 +111,7 @@ def model_a(ev, dev, windows, levels, target, out):
         r = cv[cv["model"] == name]
         rows.append({"model": name, "kind": r["kind"].iloc[0] if len(r) else "ensemble",
                      "cv_mae": float(r["cv_mae"].iloc[0]) if len(r) else np.nan,
+                     "cv_mae_supported": cv_sup[name],
                      "test_mae": m["mae"] if name != MAIN_A else np.nan, "test_rmse": m["rmse"] if name != MAIN_A else np.nan,
                      "test_bias": ms["bias"], "test_mae_supported": ms["mae"],
                      "minutes_mae": float(np.mean(np.abs(p[ok] / power[ok] * 60.0 - ev["remaining_min"].to_numpy()[ok]))),
@@ -245,19 +252,19 @@ def decisions(evs, q_a, air_w, fb, parts_ev, missions, q_b, levels, cfg, out):
 
 # ------------------------------------------------------------------ figures
 def figures(a_table, a_rel, b_rel, b_detail, evs, q_a, levels, target, out, label):
-    t = a_table[a_table["cv_mae"].notna()].sort_values("test_mae", ascending=False)
-    fig, ax = plt.subplots(figsize=(7.5, 4.2))
+    t = a_table.sort_values("test_mae_supported", ascending=False)
+    fig, ax = plt.subplots(figsize=(7.5, 4.4))
     yy = np.arange(len(t))
-    ax.barh(yy - 0.2, t["cv_mae"], height=0.38, color=INK_MUTED, label="cross-validation (development)")
-    ax.barh(yy + 0.2, t["test_mae"], height=0.38, color=SERIES[0], label=f"{label} (never seen)")
+    ax.barh(yy - 0.2, t["cv_mae_supported"], height=0.38, color=INK_MUTED, label="cross-validation (development)")
+    ax.barh(yy + 0.2, t["test_mae_supported"], height=0.38, color=SERIES[0], label=f"{label} (never seen)")
     ax.set_yticks(yy, t["model"]); ax.set_xlabel("mean absolute error (Wh)")
-    lim = 1.25 * float(t.loc[t["model"] != "Fixed capacity (reference)", ["cv_mae", "test_mae"]].max().max())
+    lim = 1.25 * float(t.loc[t["model"] != "Fixed capacity (reference)", ["cv_mae_supported", "test_mae_supported"]].max().max())
     ax.set_xlim(0, lim)                                               # the reference baseline runs off the scale; its values are written in
-    for yv, col in ((-0.2, "cv_mae"), (0.2, "test_mae")):
+    for yv, col in ((-0.2, "cv_mae_supported"), (0.2, "test_mae_supported")):
         for i, v in enumerate(t[col]):
             ax.text(min(v, lim) - 0.05 if v > lim else v + 0.05, yy[i] + yv, f"{v:.2f}", va="center", ha="right" if v > lim else "left",
                     fontsize=7, color="white" if v > lim else INK_MUTED)
-    ax.set_title(f"Model A: energy available, development vs {label}"); ax.legend(fontsize=8)
+    ax.set_title(f"Model A: energy available, development vs {label} (readings with a pre-flight voltage)"); ax.legend(fontsize=8)
     save(fig, out / "figures" / "model_a_cv_vs_test.png")
 
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(10, 3.8))
@@ -359,10 +366,13 @@ def main() -> None:
         "settings": {"reserve_v": cfg["battery"]["reserve_v"], "tau": cfg["decision"]["tau"], "interval": cfg["uncertainty"]["interval"]},
         "model_a": {"readings": int(len(ev)), "chains": int(ev["battery_chain"].nunique()), "readings_with_preflight_voltage": int(len(evs))},
         "model_b": {"flights": int(len(parts_ev)), "routes": sorted(b_detail["route"].unique().tolist())},
+        "evaluated_files": artefact_hashes(
+            list((data_path("models") / "model_a").glob("*")) + list((data_path("models") / "model_b").glob("*"))
+            + list(data_path("features").glob("*.parquet")) + [data_path("results") / "decisions" / "matched_margins.json"]),
         "criteria_met": {r["criterion"]: bool(r["met"]) for _, r in crit.iterrows()}}, indent=1))
 
     pd.set_option("display.width", 250)
-    print("\nModel A, point error (Wh):\n" + a_table[["model", "cv_mae", "test_mae", "test_mae_supported", "test_bias", "minutes_mae",
+    print("\nModel A, point error (Wh):\n" + a_table[["model", "cv_mae_supported", "test_mae_supported", "cv_mae", "test_mae", "test_bias", "minutes_mae",
                                                     "vs_lookup_diff", "vs_lookup_ci_low", "vs_lookup_ci_high"]].round(3).to_string(index=False))
     print("\nModel A, calibrated ranges:\n" + a_ranges.round(3).T.to_string(header=False))
     print("\nModel B, mission error:\n" + b_table.round(3).to_string(index=False))

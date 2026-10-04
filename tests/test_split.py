@@ -34,7 +34,9 @@ def test_test_share_and_coverage(flights):
 
 
 def test_test_rows_are_locked(flights, monkeypatch):
-    monkeypatch.delenv("ENDUROSENSE_FINAL", raising=False)
+    with pytest.raises(sp.TestSetLocked):
+        sp.select(flights, sp.TEST)
+    monkeypatch.setenv("ENDUROSENSE_FINAL", "1")                           # no environment-variable way around the gate
     with pytest.raises(sp.TestSetLocked):
         sp.select(flights, sp.TEST)
     assert len(sp.select(flights, sp.TEST, final=True)) > 0
@@ -79,4 +81,38 @@ def test_every_opening_of_the_test_set_is_logged_and_changes_need_a_reason(tmp_p
     entries = json.loads(log.read_text())
     assert [e["fingerprint"] for e in entries] == ["aaa", "bbb"] and entries[1]["reason"] == "fixed a plotting bug"
     assert code_fingerprint() == code_fingerprint() and len(code_fingerprint()) == 16
+
+
+def test_code_fingerprint_sees_content_but_not_line_endings(tmp_path, monkeypatch):
+    from endurosense import access
+    from endurosense.config import load_config
+    split_file = load_config()["split"]["file"]
+    files = {"src/pkg/a.py": "x = 1\ny = 2\n", "scripts/01_step.py": "print('hi')\n", "config.yaml": "seed: 42\n",
+             "config/extra.yaml": "k: v\n", split_file: "{}\n"}
+
+    def write(newline, **changed):
+        for rel, text in {**files, **changed}.items():
+            p = tmp_path / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(text.replace("\n", newline).encode())
+        return access.code_fingerprint()
+
+    monkeypatch.setattr(access, "ROOT", tmp_path)
+    unix = write("\n")
+    assert write("\r\n") == unix                                          # a Windows checkout is the same code
+    for rel in files:                                                      # every kind of file is part of the fingerprint
+        assert write("\n", **{rel: files[rel] + "# changed\n"}) != unix, rel
+    assert write("\n") == unix
+
+
+def test_evaluated_files_are_identified_by_content(tmp_path, monkeypatch):
+    from endurosense import access
+    monkeypatch.setattr(access, "ROOT", tmp_path)
+    (tmp_path / "models").mkdir()
+    a, b = tmp_path / "models" / "a.pkl", tmp_path / "models" / "b.pkl"
+    a.write_bytes(b"one"); b.write_bytes(b"two")
+    h = access.artefact_hashes([b, a])
+    assert list(h) == ["models/a.pkl", "models/b.pkl"] and h["models/a.pkl"] != h["models/b.pkl"] and len(h["models/a.pkl"]) == 16
+    b.write_bytes(b"one")
+    assert access.artefact_hashes([a, b])["models/b.pkl"] == h["models/a.pkl"]
 

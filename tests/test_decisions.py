@@ -260,6 +260,15 @@ def test_operating_points_with_fixed_margins_and_the_mistake_summary():
     f = pairs["feasible"].to_numpy()
     hind = W.matched_margins(sc, pairs, [0.95])
     assert hind[0.95]["P2"] > 0 and hind[0.95]["P1"] > 1                                        # a margin, not a discount
+    # with an imperfect battery model each tau has its own margin: the one that matches EnduroSense's unsafe rate at that tau
+    noisy = q_a + np.random.default_rng(9).normal(0, 3, len(q_a))[:, None]
+    sn = W.policy_scores(pairs, a, noisy, missions, q_b, LEVELS, W.typical_power_by_fold(a))
+    mm = W.matched_margins(sn, pairs, [0.5, 0.95])
+    for tau in (0.5, 0.95):
+        target = W.rates(sn["P3"] >= tau, f)["unsafe_approval_rate"]
+        for c in ("P1", "P2"):
+            assert W.rates(sn[c] >= mm[tau][c], f)["unsafe_approval_rate"] <= target + 1e-12
+    assert mm[0.95]["P2"] > mm[0.5]["P2"] + 1.0 and mm[0.95]["P1"] > mm[0.5]["P1"]
     pts = W.operating_points(sc, pairs, [0.95], margins={0.95: {"P1": 1.5, "P2": 4.0}}).set_index("policy")
     row = pts.loc["   P2 with margin tuned on development data for tau = 0.95 (threshold 4.00)"]
     assert row["unsafe_approval_rate"] == W.rates(sc["P2"] >= 4.0, f)["unsafe_approval_rate"]
@@ -283,6 +292,17 @@ def test_real_pair_check_reports_an_honest_margin_when_the_models_are_right():
     assert r["flights"] == n and abs(r["correlation"]) < 0.15 and r["ci_low"] < r["correlation"] < r["ci_high"]
     assert r["margin_90_range_covers"] == pytest.approx(0.90, abs=0.05)
     assert r["margin_error_sd_actual_wh"] == pytest.approx(r["margin_error_sd_if_independent_wh"], rel=0.1)
+    assert r["margin_truth_below_90_range"] == pytest.approx(0.05, abs=0.04)
+    # a battery model that over-estimates by 6 Wh: the true margin falls *below* the predicted range, not above it
+    over = pd.DataFrame(normal_q(pre["remaining_wh"] + 6.0, np.full(n, 3.0)), index=pre.index)
+    r2 = W.real_pair_check(pre, np.arange(n), over, missions, q_b, LEVELS, rng)
+    assert r2["margin_truth_below_90_range"] > 0.5 and r2["margin_90_range_covers"] < 0.5
+    # errors that move together are reported as positively related (both models too high, or both too low)
+    shared = rng.normal(0, 2, n)
+    qa3 = pd.DataFrame(normal_q(pre["remaining_wh"] + shared, np.full(n, 2.0)), index=pre.index)
+    r3 = W.real_pair_check(pre, np.arange(n), qa3, missions, normal_q(need + 0.3 * shared, np.full(n, 0.6)), LEVELS, rng)
+    assert r3["correlation"] > 0.95 and r3["rank_correlation"] > 0.9
+    assert r3["margin_error_sd_actual_wh"] < r3["margin_error_sd_if_independent_wh"]            # shared errors partly cancel in the margin
 
 
 def test_task_pool_and_policy_comparison():
@@ -296,4 +316,9 @@ def test_task_pool_and_policy_comparison():
     t = compare_policies(sim, {"oracle": ("P4", 0.0), "reckless": ("P2", -1e9)}, days=5, tasks_per_day=20, task_pool=pool, seed=3)
     assert t["policy"].tolist() == ["oracle", "reckless"] and t.loc[0, "unsafe_per_100_missions"] == 0
     assert t.loc[1, "unsafe_per_100_missions"] > 0 and (t["completed_per_day"] + t["dropped_per_day"] == 20).all()
+    d = sim.run("P2", -1e9, 5, 20, pool, 3)                                                    # the table is arithmetic on the daily results
+    assert t.loc[1, "unsafe_per_100_missions"] == pytest.approx(100 * d["unsafe"].sum() / d["completed"].sum())
+    assert t.loc[1, "unsafe_per_day"] == d["unsafe"].mean() and t.loc[1, "swaps_per_day"] == d["swaps"].mean()
+    assert t.loc[1, "unsafe_ci"] == pytest.approx(1.96 * d["unsafe"].std() / np.sqrt(5))
+    assert t.loc[1, "missions_per_battery"] == pytest.approx(d["completed"].sum() / d["swaps"].sum())
 

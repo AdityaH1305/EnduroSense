@@ -42,12 +42,12 @@ python scripts/03_make_split.py     # Phase 1 locked train/test split -> data/sp
 python scripts/04_build_features.py # Phase 2 Model A labels/features + Model B leg & flight targets -> data/features/
 python scripts/05_model_a.py        # Phase 3 Model A comparison (baselines + 5 algorithms, ~15 min on mains + GPU, cached) -> results/model_a/
 python scripts/06_model_b.py        # Phase 4 Model B: components, missions, generalisation (~6 min) -> results/model_b/, models/model_b/model_b.pkl
-python scripts/07_uncertainty.py    # Phase 5 calibrated ranges for both models (~10 min, cached) -> results/uncertainty/, models/*/*_calibrated.*
+python scripts/07_uncertainty.py    # Phase 5 calibrated ranges for both models (~6 min, ~1 min cached) -> results/uncertainty/, models/*/*_calibrated.*
 python scripts/08_decisions.py      # Phase 6 P(success), what-if policy comparison, fleet simulation (~1 min) -> results/decisions/
 python scripts/09_final_test.py --final   # Phase 7 final evaluation on the locked test set -> results/final/
 ```
 
-`python scripts/run_all.py` runs steps 01-08 in order (about 25 minutes on mains power with a GPU); add `--final` to include step 09.
+`python scripts/run_all.py` runs steps 01-08 in order (about 28 minutes from scratch on mains power with a GPU, less with caches); add `--final` to include step 09.
 
 Test data is locked: `endurosense.data.split.select(df, "test")` raises unless `final=True`. Only `09_final_test.py --final` reads it. Every opening is logged in `results/final/test_access_log.json`; if code or settings changed since the last opening, the script asks for a `--reason`. `09_final_test.py --rehearsal` runs the same code on development rows without opening anything.
 

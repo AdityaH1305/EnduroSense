@@ -3,5 +3,10 @@
   "opened_at": "2026-10-04T11:13:38",
   "fingerprint": "64bbb0061a140831",
   "reason": "first final evaluation"
+ },
+ {
+  "opened_at": "2026-10-04T12:40:18",
+  "fingerprint": "68021ebc62ad50ff",
+  "reason": "Verification pass 5: reporting changes only - like-for-like cross-validation column and main model in the comparison figure, list of evaluated files in summary.json, removed an unused environment-variable bypass of the test-set gate. No model, setting, threshold or criterion changed."
  }
 ]

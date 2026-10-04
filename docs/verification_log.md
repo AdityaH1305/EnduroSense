@@ -115,3 +115,41 @@ The full detail is in [data_report.md](data_report.md) §0.
 - `pyflakes`: clean.
 - `06_model_b.py`, `07_uncertainty.py` and `08_decisions.py` each give byte-identical outputs on a second run.
 
+## Pass 5: Phase 7 (2026-10-04)
+
+This pass ran after the test set had been opened. It read the test labels in order to recompute the results with separate code. No model, setting, threshold or criterion was changed as a result.
+
+| # | Found | Severity | Fix |
+|---|---|---|---|
+| 1 | **The results summary compared test error with cross-validation error on a different kind of data.** The cross-validation column used all development readings, including three chains with no pre-flight voltage (errors of 8–18 Wh there); the test set has no such readings. This made most models look 0.2–0.5 Wh better on test than in development | Medium (reporting) | The like-for-like column (`cv_mae_supported`) is now written by the final script and used in the summary and the figure. On comparable readings the single GRU went from 2.39 Wh to 2.81 Wh, and the other models scored about what cross-validation predicted |
+| 2 | **Two wrong statements about the long-route error.** The summary said R6's legs are "far longer" than any development leg and that the model's warning flags all unseen-route flights. In fact one R6 leg is 12% beyond the tested range (375 m against 334 m), and R2 and R3 are not flagged | Medium (reporting) | Rewritten from a per-part breakdown: the excess is in the cruise legs (+1.0 of +1.5 Wh) on a route about 45% longer than any in development |
+| 3 | **An unlogged way to open the test set.** `ENDUROSENSE_FINAL=1` (from Phase 1) made `select(..., "test")` succeed without the access log. Nothing used it | Medium (latent) | Removed; a test checks the variable has no effect |
+| 4 | The comparison figure left out the main model (it has no entry in the Phase 3 table) | Low | Included, with its Phase 5 cross-validation error |
+| 5 | The code fingerprint did not identify the model files and tables that were scored | Low | `summary.json` now lists a content hash of each (24 files) |
+| 6 | **Mutation testing: 8 of 32 deliberate bugs in the Phase 7 code were not caught** (fingerprint line endings, margin matching per τ, direction of the real-pair check, fleet table arithmetic, the runner's `--final` handling). The final script's own helpers (intervals, range summary, success criteria) had no tests at all | Medium (latent) | 11 tests added, including the criteria logic and the runner; all 32 are now caught |
+| 7 | Run times in the README and notes were out of date | Low | Updated from the from-scratch rebuild |
+
+Because items 1, 3, 4 and 5 changed files covered by the code fingerprint, the final evaluation was **rerun once with a logged reason** (`results/final/test_access_log.json`, second entry, fingerprint `68021ebc62ad50ff`). Before the rerun the script refused to open the test set without a reason, as designed. All test numbers were identical: 17 of the 20 output files are byte-identical, and the other three differ only in the intended additions (one new column, the list of evaluated files, the figure).
+
+### Checked and confirmed correct (no change needed)
+
+- **A complete rebuild from the raw data with empty caches** (`run_all.py --final`, 30 minutes, every model retrained) reproduced all 74 result files, all 19 model files and every data table **byte for byte**. Only the latency timings differ.
+- **No development file contains test data:** no test reading in any held-out prediction file (Phases 3 and 5), no test flight in the Model B held-out files (Phases 4 and 5), no test chain in the calibration error sets or the development what-if pairs, and no chain on both sides of the split.
+- **No sign of leakage in the models themselves:** the flexible models are far better on their training readings than on test (Random Forest 1.1 Wh against 2.7 Wh; XGBoost 1.8 against 2.8), which they would not be if test readings had been trained on.
+- **Every test number recomputed with separate code,** reading roles straight from the split file: Model A error, coverage, width and both one-sided misses; the paired comparison with the voltage lookup (own bootstrap: −0.71 Wh, −1.34 to −0.11); Model B error overall, on the seen route and on unseen routes; Model B coverage; all operating points; the P(success) reliability bands; ranking quality.
+- **Truth is what it should be:** a mission's energy equals the flights table exactly; a pair's available energy equals the label of that battery reading; all 40 test cruise flights are in the mission evaluation.
+- **The margins applied to test data are the ones saved from development data.**
+- **The worst test battery (chain 70) has a measured label,** so its 7.4 Wh over-estimate is a model error, not a labelling artefact.
+- **The protocol file was not edited after the test set was opened.**
+
+### Errata in the protocol (left unedited, because it was written before opening)
+
+- It says 16 chains is "about a quarter of the development data". It is 16 of 90 chains: 18% of all data, 22% of the development chains.
+- It speaks of coverage "measured on 16 chains". Model B is measured on all 16; Model A only on the 11 test chains that have an energy-to-reserve label.
+
+### Status after pass 5
+
+- `pytest`: **126 passed**.
+- `pyflakes`: clean.
+- The code on disk matches the last entry of the test access log.
+

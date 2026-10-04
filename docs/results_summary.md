@@ -1,7 +1,7 @@
 # EnduroSense: final results
 
-**Evaluated 2026-10-04 on the locked test set**, opened once (`results/final/test_access_log.json`, code fingerprint `64bbb0061a140831`).
-**Reproduce:** `python scripts/run_all.py --final`. A second run of the final evaluation gave byte-identical outputs.
+**Evaluated 2026-10-04 on the locked test set.** Every opening is logged in `results/final/test_access_log.json`: the evaluation itself (code fingerprint `64bbb0061a140831`), and one rerun after verification pass 5 changed reporting code only (`68021ebc62ad50ff`). The rerun reproduced every test number exactly.
+**Reproduce:** `python scripts/run_all.py --final` (about 30 minutes from scratch). A complete rebuild from the raw data with empty caches reproduced all 74 result files, all 19 model files and every data table byte for byte.
 **Settings:** reserve 22.6 V, τ = 0.95, 90% ranges (project defaults; not yet confirmed by the guide).
 **Protocol:** what was measured and what counts as success was written down before the test set was opened ([final_evaluation_protocol.md](final_evaluation_protocol.md)).
 
@@ -25,19 +25,21 @@ Two met, one missed narrowly, one missed inside its noise band. The details, inc
 | Model | Cross-validation (Wh) | **Test (Wh)** | Test, vs voltage lookup (95% interval) |
 |---|---|---|---|
 | **GRU ensemble, calibrated (the main model)** | 2.37 | **2.19** | **−0.71 (−1.33 to −0.12)** |
-| LSTM | 2.65 | 2.32 | −0.58 (−1.18 to +0.06) |
-| XGBoost + physics | 3.04 | 2.40 | −0.50 (−1.02 to +0.01) |
-| Linear Regression | 3.02 | 2.63 | −0.27 (−0.92 to +0.41) |
-| Random Forest | 3.02 | 2.71 | −0.19 (−0.85 to +0.58) |
-| XGBoost | 3.26 | 2.75 | −0.14 (−0.56 to +0.30) |
-| GRU (single) | 2.61 | 2.81 | −0.08 (−0.73 to +0.62) |
-| *Voltage lookup (non-ML)* | 3.22 | 2.90 | — |
-| *Energy counting (BMS)* | 4.49 | 4.21 | +1.31 (+0.60 to +1.93) |
-| *Fixed capacity (reference)* | 13.56 | 10.16 | +7.26 (+2.88 to +10.97) |
+| LSTM | 2.45 | 2.32 | −0.58 (−1.18 to +0.06) |
+| XGBoost + physics | 2.59 | 2.40 | −0.50 (−1.02 to +0.01) |
+| Linear Regression | 2.64 | 2.63 | −0.27 (−0.92 to +0.41) |
+| Random Forest | 2.72 | 2.71 | −0.19 (−0.85 to +0.58) |
+| XGBoost | 2.91 | 2.75 | −0.14 (−0.56 to +0.30) |
+| GRU (single) | 2.39 | 2.81 | −0.08 (−0.73 to +0.62) |
+| *Voltage lookup (non-ML)* | 2.82 | 2.90 | — |
+| *Energy counting (BMS)* | 3.98 | 4.21 | +1.31 (+0.60 to +1.93) |
+| *Fixed capacity (reference)* | 13.38 | 10.16 | +7.26 (+2.88 to +10.97) |
 
-- **The main model held up:** 2.19 Wh on unseen batteries, slightly better than its cross-validation figure, and the only model whose advantage over the fair baseline is clear (the interval excludes zero). It was better on 9 of the 11 test batteries.
-- **A single GRU did not.** It was the best single model in cross-validation (2.61 Wh) but scored 2.81 Wh on test, no better than the baseline. Averaging five networks is what made the result dependable.
-- **The order of the other algorithms is not stable.** With 11 batteries, differences of 0.2–0.5 Wh between them are inside the noise. The safe statement is: every ML model is at or below the baseline, and only the ensemble is clearly below.
+The cross-validation column is for development readings that have a pre-flight voltage, like every test reading (column `cv_mae_supported`). Over all development readings, including three chains without one, the figures are 0.2–0.5 Wh higher; those are the ones in the Phase 3 notes.
+
+- **The main model held up:** 2.19 Wh on unseen batteries against 2.37 Wh in cross-validation, and the only model whose advantage over the fair baseline is clear (the interval excludes zero). It was better on 9 of the 11 test batteries.
+- **A single GRU did not.** It was the best single model in cross-validation (2.39 Wh) but scored 2.81 Wh on test, no better than the baseline. Averaging five networks is what made the result dependable.
+- **The other algorithms scored about what cross-validation predicted** (within 0.2 Wh), and their order is not stable: with 11 batteries, differences of 0.2–0.5 Wh between them are inside the noise. The safe statement is: every ML model is at or below the baseline, and only the ensemble is clearly below.
 - **Minutes left:** 0.81 min error for the main model, against 0.85 for the voltage lookup. As in development, the minutes figure is dominated by the unknown future power draw.
 
 ### Ranges (`model_a_test_ranges.csv`)
@@ -52,6 +54,7 @@ Two met, one missed narrowly, one missed inside its noise band. The details, inc
 
 - **Coverage is slightly above the target band** and well inside what 11 batteries can show.
 - **All the misses are on the unsafe side and come from two batteries.** 9 of 11 test batteries were covered 100% of the time. Chain 70 was over-estimated for 58% of its readings and chain 86 for 13%. This is the pattern Phase 5 predicted: the error is a per-battery offset, so risk is per battery, not per moment.
+- **The error is the model's, not the label's.** Chain 70's energy-to-reserve label is a measured one, and the model over-estimated it by 7.4 Wh on average (chain 86: 5.1 Wh, with an extrapolated label). On the other nine batteries the model was within 1.5 Wh on average, mostly slightly under.
 
 ## 2. Model B: energy a mission needs
 
@@ -66,7 +69,10 @@ Two met, one missed narrowly, one missed inside its noise band. The details, inc
 | of which R6, the longest route | 5 | 5.86% (1.48 Wh) | +1.48 Wh |
 
 - **On the route it was trained on, the model generalises to new batteries and days:** 2.6% against 2.35% in cross-validation.
-- **On unseen routes it misses the 5% target, in the safe direction.** All 7 unseen-route flights were over-predicted (the model said they would need more energy than they did). R6's legs are far longer than any leg in the development data, so the model is extrapolating its time-per-leg overhead. The model's own warning flags these missions as outside its tested range.
+- **On unseen routes it misses the 5% target, in the safe direction.** All 7 unseen-route flights were over-predicted (the model said they would need more energy than they did).
+  - **Where the excess is:** in the cruise legs, about 1.0 Wh of R6's 1.5 Wh; climb, descent, hover and ground are each within 0.3 Wh.
+  - **R6 is outside what the model was trained on:** its cruise distance is about 820 m against 443–568 m in development, and it has four legs where development flights almost always have three. One leg (375 m) is beyond the longest tested leg (334 m), so the model's range warning does fire for all five R6 flights.
+  - **R2 and R3 are not flagged** (their legs are within the tested range) but were still over-predicted, by 0.6 and 1.4 Wh. That is one flight each, too few to conclude anything.
 - **No variant was clearly better.** Across the seven variants the unseen-route error ranged from 3.9% (XGBoost) to 5.9%; with 7 flights that ordering means little, and the choice of main model was not revisited after seeing it.
 
 ### Ranges (`model_b_test_ranges.csv`)
@@ -80,7 +86,7 @@ Two met, one missed narrowly, one missed inside its noise band. The details, inc
 | 90% range covers, three-sortie missions | 98.0% | 90.9% (11 missions) |
 
 - **The single-flight ranges were too narrow on test.** 80% against a 90% target. 90% is still inside the resampling interval, so this is not proof of a fault, but the direction is unfavourable and it should be read as a real weakness.
-- **Where the misses are:** 4 of the 6 seen-route misses are at 100 m altitude, all under-predicted. Phase 5 had flagged 100 m as the weak spot (82% coverage in development). The unseen-route misses are the over-predictions described above.
+- **Where the misses are:** 4 of the 6 seen-route misses are at 100 m altitude, all under-predicted. Phase 5 had flagged 100 m as the weak spot (82% coverage in development). The 2 unseen-route misses are the over-predictions described above.
 - **The multi-sortie ranges held** (91%), which supports the shared-error rule adopted in verification pass 4.
 
 ## 3. Decisions
@@ -163,5 +169,6 @@ On the 30 test flights with both predictions, the correlation of the two errors 
 
 **Limits of this evaluation**
 - 11 batteries and 40 flights from one drone and one battery type. Every interval above is wide for that reason.
+- The results were checked after the fact by verification pass 5 (`docs/verification_log.md`): every number above was recomputed with separate code, and no development file was found to contain a test reading, flight or battery.
 - "Truth" for the battery is an energy-to-reserve label built from rest voltages, with its own error of about 1.5–2 Wh.
 - Decisions are evaluated by pairing real battery states with real missions, not by flying them.

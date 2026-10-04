@@ -15,13 +15,13 @@ Rules:
 - The development part is divided into grouped CV folds balanced the same way.
 
 The saved file records a flight -> role map plus a content hash. Test flights
-can only be read with ``final=True`` (or ``ENDUROSENSE_FINAL=1``).
+can only be read with ``final=True``; the one caller that passes it is the final
+evaluation script, which logs every opening (``endurosense.access``).
 """
 from __future__ import annotations
 
 import hashlib
 import json
-import os
 from datetime import date
 
 import numpy as np
@@ -155,17 +155,13 @@ def flight_roles() -> pd.Series:
     return pd.Series({int(k): v for k, v in roles.items()}, name="role")
 
 
-def _final_allowed(final: bool) -> bool:
-    return final or os.environ.get("ENDUROSENSE_FINAL") == "1"
-
-
 def select(df: pd.DataFrame, role: str, final: bool = False) -> pd.DataFrame:
     """Rows of ``df`` (must have a ``flight`` column) belonging to ``role``.
 
     Test rows are refused unless ``final=True``: they are for the one-time
     final evaluation only.
     """
-    if role == TEST and not _final_allowed(final):
+    if role == TEST and not final:
         raise TestSetLocked("test data is locked until the final evaluation (pass final=True)")
     roles = flight_roles()
     return df[df["flight"].map(roles) == role]

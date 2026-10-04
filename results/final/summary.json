@@ -1,6 +1,6 @@
 {
  "evaluated_on": "test",
- "code_fingerprint": "64bbb0061a140831",
+ "code_fingerprint": "68021ebc62ad50ff",
  "split_sha256": "ca08871f9e8e97d864d4c0695ea8b0d0dea5068842877db80a9fa2e5797dbc81",
  "settings": {
   "reserve_v": 22.6,
@@ -20,6 +20,32 @@
    "R3",
    "R6"
   ]
+ },
+ "evaluated_files": {
+  "data/features/model_a.parquet": "bf327441b219a0b6",
+  "data/features/model_a_series.parquet": "c8769f1ce991b53b",
+  "data/features/model_b_flights.parquet": "084bcd30f09a4004",
+  "data/features/model_b_legs.parquet": "ee81717e2afdb1ee",
+  "models/model_a/Energy_counting_BMS.pkl": "9269bc66b9a1d50e",
+  "models/model_a/Fixed_capacity_reference.pkl": "e30848f798b2c887",
+  "models/model_a/gru.pt": "3e946318a8ffe61e",
+  "models/model_a/Linear_Regression.pkl": "3a522f4d7f0b89fc",
+  "models/model_a/lstm.pt": "14995ec13ef75c85",
+  "models/model_a/model_a_calibrated.pt": "56e1fa76c95c0463",
+  "models/model_a/Random_Forest.pkl": "0b5e23ed7153cd45",
+  "models/model_a/Voltage_lookup.pkl": "97e6730257a7deef",
+  "models/model_a/XGBoost.pkl": "940fea0b683f9ea5",
+  "models/model_a/XGBoost_plus_physics.pkl": "bc613f41293096ce",
+  "models/model_b/Best_component_each.pkl": "47a7b7ce0c4e52a1",
+  "models/model_b/Linear_Regression.pkl": "208bf0cbe39ed69a",
+  "models/model_b/model_b.pkl": "62c967d2a3e2a9aa",
+  "models/model_b/model_b_calibrated.pkl": "3298a9d55da92f5f",
+  "models/model_b/Physics-first.pkl": "62c967d2a3e2a9aa",
+  "models/model_b/Physics.pkl": "ecd2a700e60bc124",
+  "models/model_b/Physics_plus_XGBoost.pkl": "09ef7b0af7e1a4e9",
+  "models/model_b/Random_Forest.pkl": "051e2cb6c799bb4e",
+  "models/model_b/XGBoost.pkl": "af4a3848719e1912",
+  "results/decisions/matched_margins.json": "dc278fe53869ef55"
  },
  "criteria_met": {
   "1. Model A beats both non-ML baselines": true,

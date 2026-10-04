@@ -49,3 +49,13 @@ def register_opening(log_path, reason: str | None = None, fingerprint: str | Non
     log_path.parent.mkdir(parents=True, exist_ok=True)
     log_path.write_text(json.dumps(log, indent=1))
     return fp
+
+
+def artefact_hashes(paths) -> dict:
+    """sha256 (first 16 hex digits) of each file, keyed by its path relative to the project.
+    Recorded with the final results so it is clear exactly which saved models and tables were scored."""
+    out = {}
+    for p in sorted(Path(p) for p in paths):
+        out[p.resolve().relative_to(ROOT).as_posix()] = hashlib.sha256(p.read_bytes()).hexdigest()[:16]
+    return out
+
