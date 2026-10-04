@@ -1,0 +1,5 @@
+criterion,met,evidence
+1. Model A beats both non-ML baselines,True,main model 2.19 Wh; voltage lookup 2.90 Wh; energy counting 4.21 Wh (same readings)
+"2. Model B within 5%, including unseen routes",False,all test flights 3.14%; unseen routes 5.66%
+3. 90% ranges cover 88-92%,False,Model A 93.8% (chain-resampled interval 83.0% to 100.0%); Model B 80.0% (65.0% to 92.5%); 90% inside both intervals: yes
+4. EnduroSense decides better than minutes-left and point estimates,True,"ranking quality (AUC) P3 0.994, P1 0.975, P2 0.994; unsafe approvals as specified: P3 0.61%, P1 12.36%, P2 3.58%"

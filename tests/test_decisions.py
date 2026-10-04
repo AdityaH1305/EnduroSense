@@ -238,3 +238,62 @@ def test_fleet_simulation_safety_and_bookkeeping():
     assert oracle["swaps"].sum() <= enduro["swaps"].sum()               # caution costs battery swaps
     assert oracle["leftover_wh"].mean() < enduro["leftover_wh"].mean()
     assert run("P3", 0.95).equals(enduro)                               # same seed, same days
+
+
+def test_missions_for_unseen_flights_use_the_given_error_sets():
+    idx = pd.Index([1, 2, 3], name="flight")
+    parts = pd.DataFrame({"pred_climb": 2.0, "pred_descent": 1.0, "pred_hover": 0.5, "pred_legs": [10.0, 12.0, 20.0],
+                          "pred_ground": 0.5, "battery_chain": [7, 7, 8]}, index=idx)          # no errors, no folds: unseen flights
+    fb = pd.DataFrame({"flight": idx, "total_wh": [14.0, 16.5, 24.0], "climb_s": 20.0, "cruise_s": 100.0, "descent_s": 20.0, "hover_s": 10.0})
+    cal = pd.DataFrame({"climb": [-1.0, 0.0, 1.0], "descent": 0.0, "hover": 0.0, "ground": 0.0, "legs_rel": [-0.1, 0.0, 0.1],
+                        "total_rel": 0.0, "battery_chain": [1, 2, 3]})
+    missions, q = W.build_missions(parts, fb, np.array([0.3, 0.6, 0.9]), calibration=cal)
+    assert missions["flights"].tolist() == [(1,), (2,), (3,), (1, 2)] and (missions["fold"] == -1).all()
+    assert q[0].tolist() == pytest.approx([14.0 - 1 - 1, 14.0, 14.0 + 1 + 1])                  # the three error sets replayed on flight 1
+    assert q[3].tolist() == pytest.approx(q[0] + q[1])                                         # one shared error set for both sorties
+
+
+def test_operating_points_with_fixed_margins_and_the_mistake_summary():
+    a, q_a, missions, q_b = toy_world()
+    pairs = W.make_pairs(a, missions, 4000, np.random.default_rng(5))
+    sc = W.policy_scores(pairs, a, q_a, missions, q_b, LEVELS, W.typical_power_by_fold(a))
+    f = pairs["feasible"].to_numpy()
+    hind = W.matched_margins(sc, pairs, [0.95])
+    assert hind[0.95]["P2"] > 0 and hind[0.95]["P1"] > 1                                        # a margin, not a discount
+    pts = W.operating_points(sc, pairs, [0.95], margins={0.95: {"P1": 1.5, "P2": 4.0}}).set_index("policy")
+    row = pts.loc["   P2 with margin tuned on development data for tau = 0.95 (threshold 4.00)"]
+    assert row["unsafe_approval_rate"] == W.rates(sc["P2"] >= 4.0, f)["unsafe_approval_rate"]
+    assert row["wasted_refusal_rate"] == W.rates(sc["P2"] >= 4.0, f)["wasted_refusal_rate"]
+    assert pts.loc["P4 oracle", "unsafe_approval_rate"] == 0 and len(pts) == 6
+    m = W.mistakes_at(sc, pairs, 0.95)
+    approve = (sc["P3"] >= 0.95).to_numpy()
+    assert m["wasted_refusals"] == int((~approve & f).sum()) and m["unsafe_approvals"] == int((approve & ~f).sum())
+    assert m["refused_margin_wh_median"] > 0 and m["unsafe_shortfall_wh_worst"] <= 0
+
+
+def test_real_pair_check_reports_an_honest_margin_when_the_models_are_right():
+    rng = np.random.default_rng(0)
+    n = 400
+    pre = pd.DataFrame({"flight": np.arange(n), "remaining_wh": rng.uniform(30, 70, n)}, index=np.arange(1000, 1000 + n))
+    need = rng.uniform(10, 25, n)
+    q_a = pd.DataFrame(normal_q(pre["remaining_wh"] + rng.normal(0, 3, n), np.full(n, 3.0)), index=pre.index)   # 3 Wh error, 3 Wh spread
+    missions = pd.DataFrame({"true_wh": need})
+    q_b = normal_q(need + rng.normal(0, 0.5, n), np.full(n, 0.5))
+    r = W.real_pair_check(pre, np.arange(n), q_a, missions, q_b, LEVELS, rng)
+    assert r["flights"] == n and abs(r["correlation"]) < 0.15 and r["ci_low"] < r["correlation"] < r["ci_high"]
+    assert r["margin_90_range_covers"] == pytest.approx(0.90, abs=0.05)
+    assert r["margin_error_sd_actual_wh"] == pytest.approx(r["margin_error_sd_if_independent_wh"], rel=0.1)
+
+
+def test_task_pool_and_policy_comparison():
+    from endurosense.scheduler import compare_policies, task_pool
+    a, q_a, missions, q_b = toy_world()
+    missions = missions.assign(sorties=np.where(np.arange(len(missions)) < 28, 1, 2))
+    pool = task_pool(missions, 0.3, seed=1)
+    assert (missions["sorties"].to_numpy()[pool] == 2).mean() == pytest.approx(0.3, abs=0.01) and len(pool) == 40
+    assert len(task_pool(missions.assign(sorties=1), 0.3, seed=1)) == len(missions)            # no two-sortie missions available
+    sim = FleetSimulator(batteries_from(a), a, q_a, missions, q_b, LEVELS, W.typical_power_by_fold(a), n_drones=2)
+    t = compare_policies(sim, {"oracle": ("P4", 0.0), "reckless": ("P2", -1e9)}, days=5, tasks_per_day=20, task_pool=pool, seed=3)
+    assert t["policy"].tolist() == ["oracle", "reckless"] and t.loc[0, "unsafe_per_100_missions"] == 0
+    assert t.loc[1, "unsafe_per_100_missions"] > 0 and (t["completed_per_day"] + t["dropped_per_day"] == 20).all()
+

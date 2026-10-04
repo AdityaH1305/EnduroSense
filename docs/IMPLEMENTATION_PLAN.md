@@ -211,6 +211,8 @@ EnduroSense/
 
 ## Phase 7: Final locked-test evaluation and reproducibility (Week 7)
 
+> **Status: complete (2026-10-04).** See `docs/results_summary.md` and `docs/phase_notes/phase7_final.md`. The full rebuild reproduced the stored results (45 files byte-identical; Phase 3 to 14 decimals). The test set (16 chains, 40 flights) was opened once, after the protocol and criteria were written down. Criteria: (1) Model A beats both baselines: **met** (2.19 Wh against 2.90 and 4.21); (2) Model B within 5% including unseen routes: **not met** (3.1% overall, 5.7% on 7 unseen-route flights, over-predicted); (3) 90% coverage in 88–92%: **not met, within sampling noise** (Model A 93.8%, Model B 80.0%); (4) better decisions than minutes-left and point estimates: **met** (unsafe approvals 0.61% against 12.4% and 3.6%; zero at pre-flight states). Changes from the text below: the script is `09_final_test.py`; results carry a code fingerprint in place of a git hash; every opening of the test set is logged and a changed rerun needs a stated reason.
+
 - `scripts/10_final_test.py --final`: opens the test split **once** and runs the final Model A, Model B, calibration, what-if and fleet evaluation on the test groups.
 - `scripts/run_all.py`: rebuilds everything from the raw CSV to the final tables.
 - Final results go to `results/final/`, with a git-hash-stamped summary in `docs/results_summary.md`.

@@ -1,7 +1,7 @@
 {
- "measured_at": "2026-10-02T19:19:04",
+ "measured_at": "2026-10-04T00:04:35",
  "cpu_count": 12,
  "torch_threads": 1,
  "power_plugged": true,
- "battery_percent": 37
+ "battery_percent": 80
 }

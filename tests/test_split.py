@@ -62,3 +62,21 @@ def test_edited_split_file_is_detected(flights, tmp_path, monkeypatch):
     monkeypatch.setattr(sp, "split_path", lambda: fake)
     with pytest.raises(ValueError, match="modified"):
         sp.load_split()
+
+
+def test_every_opening_of_the_test_set_is_logged_and_changes_need_a_reason(tmp_path):
+    import json
+    from endurosense.access import ReasonRequired, code_fingerprint, register_opening
+    log = tmp_path / "final" / "test_access_log.json"
+    assert register_opening(log, fingerprint="aaa") == "aaa"
+    assert register_opening(log, fingerprint="aaa") == "aaa"                # same code: a reproducibility rerun, nothing added
+    entries = json.loads(log.read_text())
+    assert len(entries) == 1 and entries[0]["reason"] == "first final evaluation"
+    with pytest.raises(ReasonRequired):
+        register_opening(log, fingerprint="bbb")                            # changed code and no explanation
+    assert len(json.loads(log.read_text())) == 1
+    register_opening(log, reason="fixed a plotting bug", fingerprint="bbb")
+    entries = json.loads(log.read_text())
+    assert [e["fingerprint"] for e in entries] == ["aaa", "bbb"] and entries[1]["reason"] == "fixed a plotting bug"
+    assert code_fingerprint() == code_fingerprint() and len(code_fingerprint()) == 16
+

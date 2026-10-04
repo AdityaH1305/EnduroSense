@@ -13,6 +13,10 @@ results/model_a/cache/
 results/uncertainty/cache_*.parquet
 # 5 MB of held-out quantiles per reading; rebuilt by scripts/07_uncertainty.py, read by scripts/08_decisions.py
 results/uncertainty/model_a_oof_quantiles.parquet
+# timings of the last full rebuild (changes every run)
+results/run_all_log.json
+# rehearsal of the final evaluation on development rows: numbers are meaningless, never kept
+results/final_rehearsal/
 
 # Python
 __pycache__/

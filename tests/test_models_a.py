@@ -124,3 +124,29 @@ def test_cross_validation_predicts_every_dev_row_once_without_seeing_it(model_a_
     oof, fm = cross_validate(Spy, dev, "remaining_wh")
     assert oof.notna().all() and len(fm) == 5
     assert len(seen_chains) == dev["battery_chain"].nunique()
+
+
+@pytest.mark.data
+def test_saved_model_a_models_load_and_predict_sensibly():
+    """Every algorithm saved by scripts/05_model_a.py can be loaded and used without retraining."""
+    from endurosense.config import data_path
+    from endurosense.data.split import DEV, select
+    from endurosense.features.model_a import sequence_windows
+    from endurosense.models.io import load_model_a, model_a_path
+    from endurosense.models.sequence import WindowStore
+    table = data_path("results") / "model_a" / "cv_metrics.csv"
+    if not table.exists() or not model_a_path("GRU", "gru").exists():
+        pytest.skip("run scripts/05_model_a.py first")
+    df = pd.read_parquet(data_path("features") / "model_a.parquet")
+    rows = select(df, DEV).iloc[::300]
+    X, mask = sequence_windows(pd.read_parquet(data_path("features") / "model_a_series.parquet"), rows)
+    full = np.zeros((len(df),) + X.shape[1:], np.float32)
+    fm = np.zeros((len(df), X.shape[1]), np.float32)
+    full[rows.index], fm[rows.index] = X, mask
+    windows = WindowStore(full, fm)
+    for _, r in pd.read_csv(table).iterrows():
+        pred = load_model_a(r["model"], r["kind"], windows).predict(rows)
+        assert pred.shape == (len(rows),) and np.isfinite(pred).all(), r["model"]
+        if r["kind"] != "baseline":                                    # fitted on these rows, so no worse than its CV error
+            assert np.mean(np.abs(pred - rows["remaining_wh"])) < r["cv_mae"] + 1.0, r["model"]
+

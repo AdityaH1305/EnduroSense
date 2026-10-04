@@ -1,0 +1,73 @@
+policy,approved_share,unsafe_approval_rate,wasted_refusal_rate,unsafe_share_of_approvals,pairs,margins
+"P1 minutes left, as in the brief (ratio >= 1)",0.4794,0.12358384502291793,0.03295010074671092,0.14904046725073009,all pairs,tuned on development data
+P2 energy point estimates (margin >= 0 Wh),0.4261,0.035803857130502464,0.03899490340168306,0.04858014550574982,all pairs,tuned on development data
+"P3 EnduroSense, tau = 0.9",0.35145,0.010723860589812333,0.1815811307336731,0.01764120073979229,all pairs,tuned on development data
+   P1 with margin tuned on development data for tau = 0.9 (threshold 2.43),0.12895,0.004843033814753956,0.7009600568922603,0.021713842574641335,all pairs,tuned on development data
+   P2 with margin tuned on development data for tau = 0.9 (threshold 5.13),0.34745,0.010550895096428262,0.19082612302951285,0.017556482947186647,all pairs,tuned on development data
+"P3 EnduroSense, tau = 0.95",0.3231,0.006140275015134481,0.242503259452412,0.010987310430207366,all pairs,tuned on development data
+   P1 with margin tuned on development data for tau = 0.95 (threshold 3.68),0.0376,0.0016431721871486638,0.9131207775275572,0.02526595744680851,all pairs,tuned on development data
+   P2 with margin tuned on development data for tau = 0.95 (threshold 6.95),0.3221,0.005534895788290236,0.24404409150171863,0.009934802856255821,all pairs,tuned on development data
+"P3 EnduroSense, tau = 0.99",0.28,0.0018161376805327337,0.3387459997629489,0.00375,all pairs,tuned on development data
+   P1 with margin tuned on development data for tau = 0.99 (threshold 4.90),0.0155,0.00017296549338406987,0.9634941329856584,0.0064516129032258064,all pairs,tuned on development data
+   P2 with margin tuned on development data for tau = 0.99 (threshold 8.56),0.30155,0.0031133788809132577,0.2894393741851369,0.005969159343392472,all pairs,tuned on development data
+P4 oracle,0.42185,0.0,0.0,0.0,all pairs,tuned on development data
+"P1 minutes left, as in the brief (ratio >= 1)",0.4794,0.12358384502291793,0.03295010074671092,0.14904046725073009,all pairs,matched on these pairs (hindsight)
+P2 energy point estimates (margin >= 0 Wh),0.4261,0.035803857130502464,0.03899490340168306,0.04858014550574982,all pairs,matched on these pairs (hindsight)
+"P3 EnduroSense, tau = 0.9",0.35145,0.010723860589812333,0.1815811307336731,0.01764120073979229,all pairs,matched on these pairs (hindsight)
+   P1 with margin matched to P3 tau = 0.9 (threshold 1.99),0.19065,0.010723860589812333,0.5627592746236814,0.032520325203252036,all pairs,matched on these pairs (hindsight)
+   P2 with margin matched to P3 tau = 0.9 (threshold 5.07),0.3484,0.010723860589812333,0.1888111888111888,0.017795637198622274,all pairs,matched on these pairs (hindsight)
+"P3 EnduroSense, tau = 0.95",0.3231,0.006140275015134481,0.242503259452412,0.010987310430207366,all pairs,matched on these pairs (hindsight)
+   P1 with margin matched to P3 tau = 0.95 (threshold 2.31),0.14255,0.006053792268442446,0.6703804669906365,0.024552788495264818,all pairs,matched on these pairs (hindsight)
+   P2 with margin matched to P3 tau = 0.95 (threshold 6.54),0.32705,0.006140275015134481,0.23313974161431789,0.010854609386943893,all pairs,matched on these pairs (hindsight)
+"P3 EnduroSense, tau = 0.99",0.28,0.0018161376805327337,0.3387459997629489,0.00375,all pairs,matched on these pairs (hindsight)
+   P1 with margin matched to P3 tau = 0.99 (threshold 3.64),0.0395,0.0017296549338406987,0.9087353324641461,0.02531645569620253,all pairs,matched on these pairs (hindsight)
+   P2 with margin matched to P3 tau = 0.99 (threshold 9.75),0.28665,0.0018161376805327337,0.3229821026431196,0.003663003663003663,all pairs,matched on these pairs (hindsight)
+P4 oracle,0.42185,0.0,0.0,0.0,all pairs,matched on these pairs (hindsight)
+"P1 minutes left, as in the brief (ratio >= 1)",0.6707,0.4977088817393,0.1471825926306066,0.38057253615625464,borderline pairs,tuned on development data
+P2 energy point estimates (margin >= 0 Wh),0.47475,0.1878716973774008,0.22323719593554348,0.2029489204844655,borderline pairs,tuned on development data
+"P3 EnduroSense, tau = 0.9",0.14715,0.05869162523154919,0.7597249307194909,0.20455317703024126,borderline pairs,tuned on development data
+   P1 with margin tuned on development data for tau = 0.9 (threshold 1.94),0.0472,0.030320756556498,0.9350302781484142,0.3294491525423729,borderline pairs,tuned on development data
+   P2 with margin tuned on development data for tau = 0.9 (threshold 4.88),0.1295,0.06512625524032369,0.8027301652468439,0.2579150579150579,borderline pairs,tuned on development data
+"P3 EnduroSense, tau = 0.95",0.0893,0.03597543141269377,0.8545622498203839,0.20660694288913775,borderline pairs,tuned on development data
+   P1 with margin tuned on development data for tau = 0.95 (threshold 2.38),0.0241,0.01374670956420006,0.9650005131889562,0.2925311203319502,borderline pairs,tuned on development data
+   P2 with margin tuned on development data for tau = 0.95 (threshold 7.30),0.07995,0.03188066686165546,0.8694447295494201,0.2045028142589118,borderline pairs,tuned on development data
+"P3 EnduroSense, tau = 0.99",0.0384,0.011211855318319197,0.9329775223237196,0.14973958333333334,borderline pairs,tuned on development data
+   P1 with margin tuned on development data for tau = 0.99 (threshold 3.97),0.0062,0.003022326216242566,0.9904546854151699,0.25,borderline pairs,tuned on development data
+   P2 with margin tuned on development data for tau = 0.99 (threshold 8.89),0.0565,0.01871892366188944,0.9037257518218208,0.16991150442477876,borderline pairs,tuned on development data
+P4 oracle,0.48715,0.0,0.0,0.0,borderline pairs,tuned on development data
+"P1 minutes left, as in the brief (ratio >= 1)",0.6707,0.4977088817393,0.1471825926306066,0.38057253615625464,borderline pairs,matched on these pairs (hindsight)
+P2 energy point estimates (margin >= 0 Wh),0.47475,0.1878716973774008,0.22323719593554348,0.2029489204844655,borderline pairs,matched on these pairs (hindsight)
+"P3 EnduroSense, tau = 0.9",0.14715,0.05869162523154919,0.7597249307194909,0.20455317703024126,borderline pairs,matched on these pairs (hindsight)
+   P1 with margin matched to P3 tau = 0.9 (threshold 1.54),0.0929,0.058496636443404505,0.8708816586267063,0.32292787944025836,borderline pairs,matched on these pairs (hindsight)
+   P2 with margin matched to P3 tau = 0.9 (threshold 5.16),0.11835,0.05869162523154919,0.818844298470697,0.2543303760033798,borderline pairs,matched on these pairs (hindsight)
+"P3 EnduroSense, tau = 0.95",0.0893,0.03597543141269377,0.8545622498203839,0.20660694288913775,borderline pairs,matched on these pairs (hindsight)
+   P1 with margin matched to P3 tau = 0.95 (threshold 1.82),0.05435,0.03597543141269377,0.926306065893462,0.33946642134314625,borderline pairs,matched on these pairs (hindsight)
+   P2 with margin matched to P3 tau = 0.95 (threshold 6.92),0.0845,0.03578044262454909,0.8642102021964487,0.21715976331360948,borderline pairs,matched on these pairs (hindsight)
+"P3 EnduroSense, tau = 0.99",0.0384,0.011211855318319197,0.9329775223237196,0.14973958333333334,borderline pairs,matched on these pairs (hindsight)
+   P1 with margin matched to P3 tau = 0.99 (threshold 2.73),0.01605,0.010626888953885152,0.9782407882582367,0.3395638629283489,borderline pairs,matched on these pairs (hindsight)
+   P2 with margin matched to P3 tau = 0.99 (threshold 9.98),0.04335,0.011016866530174516,0.9226111054090116,0.1303344867358708,borderline pairs,matched on these pairs (hindsight)
+P4 oracle,0.48715,0.0,0.0,0.0,borderline pairs,matched on these pairs (hindsight)
+"P1 minutes left, as in the brief (ratio >= 1)",0.6405,0.128208338550144,0.018896195787896447,0.0799375487900078,pre-flight states,tuned on development data
+P2 energy point estimates (margin >= 0 Wh),0.5932,0.04294478527607362,0.040955631399317405,0.028910991233985165,pre-flight states,tuned on development data
+"P3 EnduroSense, tau = 0.9",0.49035,0.0012520345561537497,0.1844668276034296,0.0010196798205363517,pre-flight states,tuned on development data
+   P1 with margin tuned on development data for tau = 0.9 (threshold 1.33),0.46605,0.001126831100538375,0.2248397569299925,0.0009655616350177019,pre-flight states,tuned on development data
+   P2 with margin tuned on development data for tau = 0.9 (threshold 8.25),0.4462,0.0,0.2571381003912428,0.0,pre-flight states,tuned on development data
+"P3 EnduroSense, tau = 0.95",0.4491,0.0,0.2523099975027054,0.0,pre-flight states,tuned on development data
+   P1 with margin tuned on development data for tau = 0.95 (threshold 1.57),0.38005,0.0,0.3672687921418463,0.0,pre-flight states,tuned on development data
+   P2 with margin tuned on development data for tau = 0.95 (threshold 11.41),0.41125,0.0,0.3153250645134438,0.0,pre-flight states,tuned on development data
+"P3 EnduroSense, tau = 0.99",0.40525,0.0,0.3253142429035212,0.0,pre-flight states,tuned on development data
+   P1 with margin tuned on development data for tau = 0.99 (threshold 1.69),0.3462,0.0,0.4236244068925331,0.0,pre-flight states,tuned on development data
+   P2 with margin tuned on development data for tau = 0.99 (threshold 12.40),0.39865,0.0,0.3363023391326063,0.0,pre-flight states,tuned on development data
+P4 oracle,0.60065,0.0,0.0,0.0,pre-flight states,tuned on development data
+"P1 minutes left, as in the brief (ratio >= 1)",0.6405,0.128208338550144,0.018896195787896447,0.0799375487900078,pre-flight states,matched on these pairs (hindsight)
+P2 energy point estimates (margin >= 0 Wh),0.5932,0.04294478527607362,0.040955631399317405,0.028910991233985165,pre-flight states,matched on these pairs (hindsight)
+"P3 EnduroSense, tau = 0.9",0.49035,0.0012520345561537497,0.1844668276034296,0.0010196798205363517,pre-flight states,matched on these pairs (hindsight)
+   P1 with margin matched to P3 tau = 0.9 (threshold 1.26),0.491,0.001126831100538375,0.18330142345792058,0.0009164969450101833,pre-flight states,matched on these pairs (hindsight)
+   P2 with margin matched to P3 tau = 0.9 (threshold 6.70),0.46975,0.0012520345561537497,0.21876300674269542,0.0010643959552953698,pre-flight states,matched on these pairs (hindsight)
+"P3 EnduroSense, tau = 0.95",0.4491,0.0,0.2523099975027054,0.0,pre-flight states,matched on these pairs (hindsight)
+   P1 with margin matched to P3 tau = 0.95 (threshold 1.35),0.45845,0.0,0.23674352784483477,0.0,pre-flight states,matched on these pairs (hindsight)
+   P2 with margin matched to P3 tau = 0.95 (threshold 8.06),0.44995,0.0,0.2508948638974444,0.0,pre-flight states,matched on these pairs (hindsight)
+"P3 EnduroSense, tau = 0.99",0.40525,0.0,0.3253142429035212,0.0,pre-flight states,matched on these pairs (hindsight)
+   P1 with margin matched to P3 tau = 0.99 (threshold 1.35),0.45845,0.0,0.23674352784483477,0.0,pre-flight states,matched on these pairs (hindsight)
+   P2 with margin matched to P3 tau = 0.99 (threshold 8.06),0.44995,0.0,0.2508948638974444,0.0,pre-flight states,matched on these pairs (hindsight)
+P4 oracle,0.60065,0.0,0.0,0.0,pre-flight states,matched on these pairs (hindsight)

@@ -1,0 +1,14 @@
+{
+ "flights": 30,
+ "correlation": 0.43402142602545973,
+ "ci_low": 0.14061297037209194,
+ "ci_high": 0.6566491488299586,
+ "rank_correlation": 0.3121245828698554,
+ "rank_p_value": 0.09311670346451129,
+ "battery_error_sd_wh": 3.6619432394537705,
+ "mission_error_sd_wh": 0.9038730155254429,
+ "margin_error_sd_if_independent_wh": 3.7718450017433423,
+ "margin_error_sd_actual_wh": 3.3695180935636806,
+ "margin_90_range_covers": 1.0,
+ "margin_truth_below_90_range": 0.0
+}

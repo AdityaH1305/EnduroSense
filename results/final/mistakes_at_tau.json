@@ -1,0 +1,22 @@
+{
+ "all pairs": {
+  "tau": 0.95,
+  "wasted_refusals": 2046,
+  "refused_margin_wh_median": 3.790514460389563,
+  "refused_margin_wh_p90": 8.866290574111048,
+  "refused_share_within_10wh": 0.9325513196480938,
+  "unsafe_approvals": 71,
+  "unsafe_shortfall_wh_worst": -7.257794663940551,
+  "unsafe_shortfall_wh_median": -2.176897283759729
+ },
+ "pre-flight states": {
+  "tau": 0.95,
+  "wasted_refusals": 3031,
+  "refused_margin_wh_median": 4.517303127145162,
+  "refused_margin_wh_p90": 10.783160731215602,
+  "refused_share_within_10wh": 0.8772682283074893,
+  "unsafe_approvals": 0,
+  "unsafe_shortfall_wh_worst": 0.0,
+  "unsafe_shortfall_wh_median": 0.0
+ }
+}

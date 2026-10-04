@@ -1,0 +1,30 @@
+{
+ "evaluated_on": "test",
+ "code_fingerprint": "64bbb0061a140831",
+ "split_sha256": "ca08871f9e8e97d864d4c0695ea8b0d0dea5068842877db80a9fa2e5797dbc81",
+ "settings": {
+  "reserve_v": 22.6,
+  "tau": 0.95,
+  "interval": 0.9
+ },
+ "model_a": {
+  "readings": 5708,
+  "chains": 11,
+  "readings_with_preflight_voltage": 5708
+ },
+ "model_b": {
+  "flights": 40,
+  "routes": [
+   "R1",
+   "R2",
+   "R3",
+   "R6"
+  ]
+ },
+ "criteria_met": {
+  "1. Model A beats both non-ML baselines": true,
+  "2. Model B within 5%, including unseen routes": false,
+  "3. 90% ranges cover 88-92%": false,
+  "4. EnduroSense decides better than minutes-left and point estimates": true
+ }
+}

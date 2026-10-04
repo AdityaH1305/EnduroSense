@@ -40,15 +40,26 @@ python scripts/01_profile_data.py   # Phase 0 dataset profile -> data/processed/
 python scripts/02_prepare_data.py   # Phase 1 cleaned tables -> data/processed/{samples,flights,chains}.parquet
 python scripts/03_make_split.py     # Phase 1 locked train/test split -> data/splits/split_v2.json (never overwritten)
 python scripts/04_build_features.py # Phase 2 Model A labels/features + Model B leg & flight targets -> data/features/
-python scripts/05_model_a.py        # Phase 3 Model A comparison (baselines + 5 algorithms, ~1 h, cached) -> results/model_a/
+python scripts/05_model_a.py        # Phase 3 Model A comparison (baselines + 5 algorithms, ~15 min on mains + GPU, cached) -> results/model_a/
 python scripts/06_model_b.py        # Phase 4 Model B: components, missions, generalisation (~6 min) -> results/model_b/, models/model_b/model_b.pkl
 python scripts/07_uncertainty.py    # Phase 5 calibrated ranges for both models (~10 min, cached) -> results/uncertainty/, models/*/*_calibrated.*
-python scripts/08_decisions.py      # Phase 6 P(success), what-if policy comparison, fleet simulation (~3 min) -> results/decisions/
+python scripts/08_decisions.py      # Phase 6 P(success), what-if policy comparison, fleet simulation (~1 min) -> results/decisions/
+python scripts/09_final_test.py --final   # Phase 7 final evaluation on the locked test set -> results/final/
 ```
 
-Test data is locked: `endurosense.data.split.select(df, "test")` raises unless `final=True`. It is only used in the final evaluation.
+`python scripts/run_all.py` runs steps 01-08 in order (about 25 minutes on mains power with a GPU); add `--final` to include step 09.
 
-Further numbered scripts are added phase by phase. `scripts/run_all.py` will rebuild everything from the raw data.
+Test data is locked: `endurosense.data.split.select(df, "test")` raises unless `final=True`. Only `09_final_test.py --final` reads it. Every opening is logged in `results/final/test_access_log.json`; if code or settings changed since the last opening, the script asks for a `--reason`. `09_final_test.py --rehearsal` runs the same code on development rows without opening anything.
+
+## Results
+
+The final results on the test set, including what did not hold up, are in [docs/results_summary.md](docs/results_summary.md).
+
+| | Test result |
+|---|---|
+| Energy available (Model A), error on unseen batteries | 2.19 Wh, against 2.90 Wh for the best non-ML baseline |
+| Energy required (Model B), error on unseen flights | 3.1% (2.6% on the trained route, 5.7% on unseen routes) |
+| Unsafe approvals: minutes-left rule / EnduroSense | 12.4% / 0.61% (0.00% at take-off decisions) |
 
 ## Layout
 
@@ -60,16 +71,19 @@ src/endurosense/     the Python package
   features/          Model A labels & causal features, Model B leg/flight targets
   mission.py         MissionSpec and phase-based mission energy assembly
   models/            Model A baselines, tabular (Linear/RF/XGBoost) and sequence (LSTM/GRU) predictors;
-                     Model B physics/ML/hybrid components and the mission-energy model
+                     Model B physics/ML/hybrid components and the mission-energy model; loaders for saved models
   evaluate.py        metrics, grouped CV, paired bootstrap comparison, latency/size
   uncertainty/       conformal calibration by battery chain, predictive distributions, coverage metrics
   feasibility.py     P(success) = P(energy available >= energy required) and the go / no-go rule
   whatif.py          real battery states x real missions: policies P1-P4, trade-off curves, reliability of P(success)
   scheduler.py       fleet simulation on real battery chains
+  decision_plots.py  figures of the decision evaluation (shared by development and test runs)
+  access.py          log of every opening of the locked test set
   plots.py           shared figure style
 scripts/             numbered pipeline steps
 tests/               unit and data-regression tests
-docs/                plan, implementation plan, data report, chain review, verification log, literature, phase notes
+docs/                plan, implementation plan, results summary, evaluation protocol, data report, chain review,
+                     verification log, literature, phase notes
 config/              manual decisions (chain_overrides.yaml)
 results/             generated tables and figures, per phase
 data/                raw/ (not versioned), processed/, splits/

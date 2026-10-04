@@ -142,3 +142,29 @@ class FleetSimulator:
             tasks = rng.choice(task_pool, tasks_per_day)
             rows.append({"day": day, **self.run_day(policy, threshold, tasks, np.random.default_rng(seed + 10_000 + day))})
         return pd.DataFrame(rows)
+
+
+def compare_policies(sim: FleetSimulator, thresholds: dict, days: int, tasks_per_day: int, task_pool: np.ndarray, seed: int) -> pd.DataFrame:
+    """Run every policy in ``thresholds`` ({label: (policy, threshold)}) on the same days.
+    The +/- columns are 95% intervals over simulated days, for this set of batteries and tasks."""
+    rows = []
+    for name, (policy, t) in thresholds.items():
+        d = sim.run(policy, t, days, tasks_per_day, task_pool, seed)
+        se = lambda c: 1.96 * d[c].std() / np.sqrt(len(d))
+        rows.append({"policy": name, "threshold": t,
+                     "completed_per_day": d["completed"].mean(), "completed_ci": se("completed"),
+                     "unsafe_per_day": d["unsafe"].mean(), "unsafe_ci": se("unsafe"),
+                     "unsafe_per_100_missions": 100 * d["unsafe"].sum() / max(d["completed"].sum(), 1),
+                     "dropped_per_day": d["dropped"].mean(), "swaps_per_day": d["swaps"].mean(), "swaps_ci": se("swaps"),
+                     "energy_left_at_swap_wh": d["leftover_wh"].mean(),
+                     "missions_per_battery": d["completed"].sum() / max(d["swaps"].sum(), 1)})
+    return pd.DataFrame(rows)
+
+
+def task_pool(missions: pd.DataFrame, two_sortie_share: float, seed: int) -> np.ndarray:
+    """Mission indices to draw daily tasks from: all single flights plus enough
+    two-sortie missions to make up ``two_sortie_share`` of the pool."""
+    single, two = np.flatnonzero(missions["sorties"] == 1), np.flatnonzero(missions["sorties"] == 2)
+    n_two = int(round(len(single) * two_sortie_share / (1 - two_sortie_share)))
+    return np.r_[single, np.random.default_rng(seed).choice(two, n_two)] if len(two) else single
+

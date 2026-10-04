@@ -37,6 +37,7 @@ from itertools import combinations
 
 import numpy as np
 import pandas as pd
+from scipy.stats import spearmanr
 from sklearn.metrics import auc, roc_curve
 
 from endurosense.config import load_config
@@ -67,7 +68,8 @@ def typical_power_by_fold(a: pd.DataFrame) -> pd.Series:
     return pd.Series({k: float(on.loc[on["fold"] != k, "p"].median()) for k in np.unique(a["fold"])})
 
 
-def build_missions(parts: pd.DataFrame, flights_b: pd.DataFrame, levels) -> tuple[pd.DataFrame, np.ndarray]:
+def build_missions(parts: pd.DataFrame, flights_b: pd.DataFrame, levels,
+                   calibration: pd.DataFrame | None = None) -> tuple[pd.DataFrame, np.ndarray]:
     """Single-flight missions and multi-sortie missions, with their held-out distributions.
 
     ``parts`` is Phase 5's ``model_b_oof_parts`` (pred_*, err_*, fold; indexed by flight).
@@ -75,19 +77,29 @@ def build_missions(parts: pd.DataFrame, flights_b: pd.DataFrame, levels) -> tupl
     mission is every combination of 2 (or 3) flights that were flown on the same
     battery, so its sorties share a day, a battery and a fold. Returns the mission
     table and a (missions, levels) array of predictive quantiles.
+
+    By default each flight is calibrated on the held-out errors of the *other* folds.
+    For flights the final model never saw (the test set), pass the development error
+    sets as ``calibration``; ``parts`` then needs only pred_* and ``battery_chain``.
     """
     cfg = load_config()["decision"]
     pred = parts[[c for c in parts if c.startswith("pred_")]].rename(columns=lambda c: c[5:])
-    tuples = parts[[c for c in parts if c.startswith("err_")]].rename(columns=lambda c: c[4:])
-    fold, chain = parts["fold"], tuples["battery_chain"]
     f = flights_b.set_index("flight").loc[parts.index]
     air_min = (f["climb_s"] + f["cruise_s"] + f["descent_s"] + f["hover_s"]) / 60.0
+    if calibration is None:
+        tuples = parts[[c for c in parts if c.startswith("err_")]].rename(columns=lambda c: c[4:])
+        fold, chain = parts["fold"], tuples["battery_chain"]
+        single_q = UB.leave_fold_out_quantiles(pred, tuples, fold, levels)
+        calibration = {int(k): tuples[(fold != k).to_numpy()] for k in np.unique(fold)}
+    else:
+        fold, chain = pd.Series(-1, index=parts.index), parts["battery_chain"]
+        single_q = np.array([UB.quantiles_from_replay(UB.replay(pred.loc[fl].to_dict(), calibration),
+                                                      calibration["battery_chain"], levels) for fl in parts.index])
+        calibration = {-1: calibration}
 
     rows = [{"flights": (int(fl),), "sorties": 1, "fold": int(fold[fl]), "battery_chain": int(chain[fl]),
              "true_wh": float(f.loc[fl, "total_wh"]), "duration_min": float(air_min[fl])} for fl in parts.index]
-    q = [UB.leave_fold_out_quantiles(pred, tuples, fold, levels)]
-
-    calibration = {int(k): tuples[(fold != k).to_numpy()] for k in np.unique(fold)}
+    q = [single_q]
     multi = []
     for ch, flights in chain.groupby(chain).groups.items():
         for k in cfg["compound_sizes"]:
@@ -101,6 +113,37 @@ def build_missions(parts: pd.DataFrame, flights_b: pd.DataFrame, levels) -> tupl
     if multi:
         q.append(np.array(multi))
     return pd.DataFrame(rows), np.vstack(q)
+
+
+def real_pair_check(pre: pd.DataFrame, flights, q_a: pd.DataFrame, missions: pd.DataFrame, q_b: np.ndarray,
+                    levels, rng: np.random.Generator) -> dict:
+    """Are the two models' errors independent, and is the predicted margin honest?
+
+    Uses real pairs: a battery's pre-flight state and the flight it then flew (``flights``
+    lists the flights that have a mission prediction; single-flight missions come first
+    in ``missions``, in that order). Reports the correlation of the two errors and where
+    the true margin falls in the predicted margin distribution.
+    """
+    levels = np.asarray(levels, float)
+    mid = int(np.argmin(np.abs(levels - 0.5)))
+    flights = pd.Index(flights)
+    both = pre[pre["flight"].isin(flights)]
+    own = pd.Series(np.arange(len(flights)), index=flights)[both["flight"]].to_numpy()
+    qa_own, qb_own = q_a.loc[both.index].to_numpy(), q_b[own]
+    true_a, true_b = both["remaining_wh"].to_numpy(), missions["true_wh"].to_numpy()[own]
+    err_a, err_b = qa_own[:, mid] - true_a, qb_own[:, mid] - true_b
+    corr = float(np.corrcoef(err_a, err_b)[0, 1])
+    boot = [np.corrcoef(err_a[i], err_b[i])[0, 1] for i in (rng.integers(0, len(err_a), len(err_a)) for _ in range(2000))]
+    rank = spearmanr(err_a, err_b)
+    # where the true margin falls in the predicted margin distribution: P(A - B <= truth) = 1 - P(A >= B + truth)
+    pit = 1.0 - p_success_batch(qa_own, qb_own + (true_a - true_b)[:, None], levels)
+    return {"flights": int(len(both)), "correlation": corr, "ci_low": float(np.percentile(boot, 2.5)),
+            "ci_high": float(np.percentile(boot, 97.5)), "rank_correlation": float(rank.statistic), "rank_p_value": float(rank.pvalue),
+            "battery_error_sd_wh": float(err_a.std()), "mission_error_sd_wh": float(err_b.std()),
+            "margin_error_sd_if_independent_wh": float(np.hypot(err_a.std(), err_b.std())),
+            "margin_error_sd_actual_wh": float((err_a - err_b).std()),
+            "margin_90_range_covers": float(np.mean((pit >= 0.05) & (pit <= 0.95))),
+            "margin_truth_below_90_range": float(np.mean(pit < 0.05))}
 
 
 def make_pairs(states: pd.DataFrame, missions: pd.DataFrame, n: int, rng: np.random.Generator) -> pd.DataFrame:
@@ -158,6 +201,53 @@ def approved_at_unsafe(score: np.ndarray, feasible: np.ndarray, max_unsafe: floa
     ok = fpr <= max_unsafe + 1e-12
     i = int(np.flatnonzero(ok)[np.argmax(tpr[ok])])
     return float(tpr[i]), float(thr[i])
+
+
+def operating_points(scores: pd.DataFrame, pairs: pd.DataFrame, tau_list, margins: dict | None = None) -> pd.DataFrame:
+    """Each policy as literally specified, plus P1/P2 with a safety margin.
+
+    Without ``margins`` the margin is the one that gives P1/P2 the same unsafe-approval
+    rate as EnduroSense *on these pairs* (a like-for-like comparison, tuned with hindsight).
+    With ``margins`` ({tau: {"P1": threshold, "P2": threshold}}, e.g. found on development
+    data) those fixed thresholds are applied instead, as they would be in practice.
+    """
+    f = pairs["feasible"].to_numpy()
+    rows = [{"policy": "P1 minutes left, as in the brief (ratio >= 1)", **rates(scores["P1"] >= 1.0, f)},
+            {"policy": "P2 energy point estimates (margin >= 0 Wh)", **rates(scores["P2"] >= 0.0, f)}]
+    for tau in tau_list:
+        r = rates(scores["P3"] >= tau, f)
+        rows.append({"policy": f"P3 EnduroSense, tau = {tau}", **r})
+        for col, name in (("P1", "P1 with margin"), ("P2", "P2 with margin")):
+            if margins is None:
+                thr = approved_at_unsafe(scores[col].to_numpy(), f, r["unsafe_approval_rate"])[1]
+                label = f"   {name} matched to P3 tau = {tau} (threshold {thr:.2f})"
+            else:
+                thr = margins[tau][col]
+                label = f"   {name} tuned on development data for tau = {tau} (threshold {thr:.2f})"
+            rows.append({"policy": label, **rates(scores[col] >= thr, f)})
+    rows.append({"policy": "P4 oracle", **rates(scores["P4"] >= 0.0, f)})
+    return pd.DataFrame(rows)
+
+
+def matched_margins(scores: pd.DataFrame, pairs: pd.DataFrame, tau_list) -> dict:
+    """The P1 and P2 thresholds whose unsafe-approval rate equals EnduroSense's at each tau."""
+    f = pairs["feasible"].to_numpy()
+    return {tau: {c: approved_at_unsafe(scores[c].to_numpy(), f, rates(scores["P3"] >= tau, f)["unsafe_approval_rate"])[1]
+                  for c in ("P1", "P2")} for tau in tau_list}
+
+
+def mistakes_at(scores: pd.DataFrame, pairs: pd.DataFrame, tau: float) -> dict:
+    """What EnduroSense's two kinds of mistake look like at ``tau``: how close the refused
+    feasible missions were, and how far short the approved infeasible ones fell."""
+    approve = (scores["P3"] >= tau).to_numpy()
+    refused = pairs.loc[~approve & pairs["feasible"], "true_margin_wh"]
+    unsafe = pairs.loc[approve & ~pairs["feasible"], "true_margin_wh"]
+    return {"tau": tau, "wasted_refusals": int(len(refused)),
+            "refused_margin_wh_median": float(refused.median()) if len(refused) else 0.0,
+            "refused_margin_wh_p90": float(refused.quantile(0.9)) if len(refused) else 0.0,
+            "refused_share_within_10wh": float((refused < 10).mean()) if len(refused) else 0.0,
+            "unsafe_approvals": int(len(unsafe)), "unsafe_shortfall_wh_worst": float(unsafe.min()) if len(unsafe) else 0.0,
+            "unsafe_shortfall_wh_median": float(unsafe.median()) if len(unsafe) else 0.0}
 
 
 def _curve_stats(score: np.ndarray, feasible: np.ndarray, unsafe_levels, weight=None) -> dict:
