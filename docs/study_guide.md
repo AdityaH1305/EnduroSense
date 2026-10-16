@@ -947,3 +947,5 @@ Prepare your own answers to these. Only you can answer them.
 > On the locked test data, the brief's minutes-left rule approved 12.4% of missions that would have cut into the reserve. Mine approved 0.61%, and none at take-off. The price is caution: it refuses about a quarter of missions that would have been fine.
 >
 > I set four success criteria beforehand. Two were met. Two were not: the mission model was 5.7% on routes it had never seen, and its ranges were too narrow. I reported those as they are and did not adjust the models afterwards.
+>
+> My guide then asked for two extensions, which I built as simulations on the real batteries and missions. A fleet planner that weighs priority, deadline, payload, charging and the probability of success: it got 95% of urgent tasks done on time against 62% for a first-come queue, while staying as safe. And a choice of where to process a task's data: on board, on an edge server or on another drone. The surprise there is that hovering while waiting costs far more energy than the radio, so choosing by energy and deadline met 96% of computing deadlines for less energy than always processing on board.

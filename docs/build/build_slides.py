@@ -340,6 +340,7 @@ def deck() -> list:
         text(M, 2.3, 5.8, 4.0, "**Three missions, one battery:** the case on the earlier slide, live.\n"
              "**Mission check:** any unseen battery, any planned or recorded mission.\n"
              "**Fleet:** the simulation with adjustable fleet, workload and threshold.\n"
+             "**Fleet planner:** the guide’s extensions.\n"
              "**Results:** every table in this talk, read from the result files.", size=18, bullets=True, after=10),
         text(6.9, 1.6, 5.9, 0.6, "Next steps", size=22, bold=True, color=BLUE),
         text(6.9, 2.3, 5.9, 4.4, "More batteries and longer routes: the two missed criteria are data limits.\n"

@@ -117,6 +117,9 @@ def build(out=OUT) -> None:
                "a final report and a slide deck.",
                f"**Success criteria:** {word(f['criteria_total'])} were written down before the final evaluation. "
                f"{word(f['criteria_met']).capitalize()} were met and {word(f['criteria_total'] - f['criteria_met'])} were not. Section 7 explains both.",
+               "**The two extensions you suggested are built:** an energy-aware fleet planner, and a choice of where a task's data is "
+               "processed (on board, on an edge server or on another drone). They are simulations on the real batteries and missions; "
+               "step 9 in section 5 describes them.",
                "**What is needed now:** approval of a few choices that were made using sensible defaults, or instructions to change them. "
                "They are listed in the next section. Changing any of them takes about half an hour of computer time."])
 
@@ -247,10 +250,34 @@ def build(out=OUT) -> None:
                "Then the locked test set was opened and every model, range and decision rule was scored on it, with nothing adjusted.",
                "One command rebuilds the whole project from the raw data in about 30 minutes; a full rebuild gave exactly the same files."])
     r.h("Step 8. Dashboard, report and slides", 2)
-    r.bullets(["**A live dashboard** with five pages: a worked example, a mission checker (choose a battery, plan a mission, see the decision), "
-               "the fleet simulation, the results, and an explanation.",
-               "**A final report** (9 pages) and **a slide deck** (13 slides with speaker notes).",
+    r.bullets(["**A live dashboard** with six pages: a worked example, a mission checker (choose a battery, plan a mission, see the decision), "
+               "the fleet simulation, the extensions (step 9), the results, and an explanation.",
+               "**A final report** (10 pages) and **a slide deck** (14 slides with speaker notes).",
                "All three take their numbers directly from the result files, so they cannot disagree with the results."])
+
+    ext = L.extension_results("final")
+    if ext is not None:
+        pl, cm = ext["planner"].set_index("code"), ext["computing"].set_index("rule")
+        pc = ext["summary"]["settings"]["planner"]
+        r.h("Step 9. The extensions you suggested", 2)
+        r.p("Both were added after the final evaluation, on top of the finished models. The batteries and missions in them are real recordings. "
+            "What the dataset does not contain is simulated: when tasks arrive, their priorities and deadlines, each drone's payload limit, the "
+            "chargers, and the radio and edge-server settings. What would count as success was again written down first, and the unseen "
+            "batteries were used once, with that use logged.")
+        r.bullets([f"**Scheduling several drones.** {len(pc['drone_max_payload_g'])} drones, {pc['tasks_per_day']} tasks a day, each with a priority and a "
+                   "deadline, battery swaps and a charging station. The planner matches all waiting tasks to all free drones at once: urgent and "
+                   "important tasks first, only if the payload fits, the task can be finished in time, and the battery very likely covers it. "
+                   f"It got {pl.loc['S4', 'weighted_on_time_pct']:.0f}% of the priority-weighted work done on time, against "
+                   f"{pl.loc['S2', 'weighted_on_time_pct']:.0f}% for a simple first-come queue, with "
+                   f"{pl.loc['S4', 'unsafe_per_100_flown']:.2f} missions per 100 cutting into the reserve (the brief's rule: "
+                   f"{pl.loc['S1', 'unsafe_per_100_flown']:.1f}).",
+                   "**Where to process a task's data.** On board, on an edge server at the depot, or on another drone. The radio and computer use "
+                   "very little energy; what costs energy is the drone hovering while it waits for a result. Choosing by energy and deadline met "
+                   f"{cm.loc['energy-aware', 'jobs_on_time_pct']:.0f}% of the computing deadlines at {cm.loc['energy-aware', 'computing_wh_per_task']:.1f} Wh per "
+                   f"task, against {cm.loc['local', 'jobs_on_time_pct']:.0f}% at {cm.loc['local', 'computing_wh_per_task']:.1f} Wh when always processing on board.",
+                   ("**Criteria:** all three were met." if ext["criteria"]["met"].all() else
+                    f"**Criteria:** {word(int(ext['criteria']['met'].sum()))} of {word(len(ext['criteria']))} met.") + " The simulated settings (priorities, "
+                   "deadlines, chargers, radio and server) are assumptions; please confirm them or suggest others."])
 
     # ================================================================= 6 results
     r.h("6. Final results on the test data")
@@ -301,8 +328,8 @@ def build(out=OUT) -> None:
     # ================================================================= 8 trust
     r.h("8. How the results were checked")
     r.bullets(["**The test data was protected.** It was chosen before any modelling, the code refuses to read it except in the final evaluation, and "
-               f"every reading of it is logged ({len(log)} entries: the evaluation, and one repeat after a check that changed only how results are reported; "
-               "the numbers were identical).",
+               f"every reading of it is logged ({len(log)} entries: the evaluation, one repeat after a check that changed only how results are reported "
+               "(the numbers were identical)" + (", and the run of the extensions)." if len(log) > 2 else ")."),
                "**Success was defined first.** The criteria were written down before the test data was opened.",
                "**Everything can be rebuilt.** One command recreates all results from the raw data. A complete rebuild produced identical files.",
                f"**Automatic tests.** {n_tests} tests check the calculations, including by deliberately breaking the code to confirm that a test notices.",
@@ -331,12 +358,12 @@ def build(out=OUT) -> None:
     r.h("10. What is in the project")
     r.table(["Item", "Where", "What it is"],
             [["Dashboard", "app/", "Live demo. Start with: streamlit run app/streamlit_app.py"],
-             ["Final report", "docs/EnduroSense_Final_Report.docx", "9 pages, with tables and figures"],
-             ["Slides", "docs/EnduroSense_Slides.pptx", "13 slides with speaker notes"],
+             ["Final report", "docs/EnduroSense_Final_Report.docx", "10 pages, with tables and figures"],
+             ["Slides", "docs/EnduroSense_Slides.pptx", "14 slides with speaker notes"],
              ["Results summary", "docs/results_summary.md", "All final numbers, and what may and may not be claimed"],
              ["Review log", "docs/verification_log.md", "What each review round found and fixed"],
              ["Step-by-step notes", "docs/phase_notes/", "One note per stage of the work"],
-             ["Code", "src/, scripts/, tests/", "9 numbered steps run in order; one command runs them all"]],
+             ["Code", "src/, scripts/, tests/", "10 numbered steps; one command runs steps 1 to 9, the extensions run on their own"]],
             [3.4, 6.2, 6.8], caption="Deliverables.", align_right_from=9)
 
     # ================================================================= 11 limits / next

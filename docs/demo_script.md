@@ -1,4 +1,4 @@
-# Demo script (about 6 minutes)
+# Demo script (about 7 minutes)
 
 **Before the session**
 
@@ -34,7 +34,15 @@ streamlit run app/streamlit_app.py
 2. **Point at** the left chart: 12 unsafe missions per 100 with the brief's rule, under 1 with EnduroSense.
 3. **Point at** the right chart: the cost is about 10% more battery swaps.
 
-## 4. Results (1 minute)
+## 4. Fleet planner, the extensions (1 minute)
+
+1. Open **Fleet planner (extension)**. "My guide asked for two additions. They are simulations on the real unseen batteries and missions: the schedule, the chargers and the radio settings are simulated."
+2. **Point at** the criteria table: all three were met, and they were written down before this run.
+3. **Point at** the left chart: the planner gets about 84% of the priority-weighted work done on time against 71% for a first-come queue, and 95% of the urgent tasks against 62%.
+4. **Point at** the right chart: with best estimates the planner is just as quick but has 4.46 unsafe missions per 100; with EnduroSense 0.61. "Planning gives the speed, the probability gives the safety."
+5. **Scroll** to *Where to process a task's data*: "Hovering while waiting for a result is what costs energy, not the radio. Choosing by energy and deadline met 96% of computing deadlines for less energy than always processing on board."
+
+## 5. Results (1 minute)
 
 1. Open **Results**. "We wrote down four success criteria before opening the test set. Two were met, two were not."
 2. **Read out** the two that were not met, and scroll to *What did not hold up*.
