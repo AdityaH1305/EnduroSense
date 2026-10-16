@@ -114,3 +114,40 @@ fleet:                      # fleet simulation (Phase 6)
   tasks_per_day: 40
   days: 200
   two_sortie_share: 0.3     # share of tasks that are two-sortie missions
+
+# Extensions requested by the guide (Phase 9). Simulation studies on top of the finished models:
+# none of these settings is in the dataset, and nothing here changes the models or the results above.
+extensions:
+  planner:                  # extension 1: energy-aware fleet planner (src/endurosense/fleet_planner.py)
+    day_min: 480                        # an 8-hour working day, in one-minute steps
+    last_arrival_before_end_min: 60     # no new tasks in the last hour
+    tasks_per_day: 100
+    days: 200
+    two_sortie_share: 0.3               # share of tasks that are two-sortie missions
+    priorities:                         # share of tasks, value weight, deadline after arrival
+      high: {share: 0.2, weight: 3, deadline_min: 30}
+      normal: {share: 0.5, weight: 2, deadline_min: 90}
+      low: {share: 0.3, weight: 1, deadline_min: 240}
+    drone_max_payload_g: [750, 500, 500, 250]   # one entry per drone
+    turnaround_min: 3                   # landing to next take-off: checks and loading
+    swap_min: 2                         # changing a battery
+    batteries_per_drone: 3              # packs in circulation per drone (the rest wait at the depot)
+    chargers: 2
+    charger_w: 100                      # power into a pack while charging
+  computing:                # extension 2: where to process a task's data (src/endurosense/edge.py)
+    cpu_w: 15                           # onboard computer while working (a small GPU board)
+    tx_w: 1.0                           # radio while transmitting
+    data_mb: [20, 150]                  # size of the data to process
+    local_s: [10, 60]                   # time the onboard computer needs for it
+    edge_speedup: 8                     # the edge server is this many times faster
+    on_site_share: 0.5                  # share of jobs whose result is needed before leaving the site (the drone hovers)
+    job_deadline_s: [30, 120]           # the result is needed within this time of reaching the site
+    bandwidth_mhz: 10
+    snr_db_at_100m: 20                  # link quality to the depot at 100 m
+    path_loss_exponent: 2.5
+    blocked_prob: 0.1                   # chance the link is blocked (buildings, trees)
+    blocked_rate_factor: 0.1            # a blocked link keeps this share of its rate
+    edge_busy_prob: 0.3                 # chance the edge server is busy
+    edge_wait_s_mean: 30                # average wait when it is busy
+    plan_for: {fade: 0.3, blocked: true, edge_wait_s: 60}   # the bad case allowed for before take-off
+    days: 100

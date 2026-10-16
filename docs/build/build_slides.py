@@ -294,6 +294,28 @@ def deck() -> list:
         "Only the pairing of batteries with tasks is simulated. Best estimates plus a fixed margin tuned in development sits close to EnduroSense here: "
         "slightly fewer unsafe missions, more battery swaps."))
 
+    ext = L.extension_results("final")
+    if ext is not None:
+        from PIL import Image
+        pl, cm = ext["planner"].set_index("code"), ext["computing"].set_index("rule")
+        ea, loc = cm.loc["energy-aware"], cm.loc["local"]
+        fw, fh = Image.open(ext["figure"]).size
+        fig_h = cw * fh / fw
+        met = int(ext["criteria"]["met"].sum())
+        s.append(slide("The guide’s extensions: planning a fleet, and where to compute", [
+            image(M, 1.4, cw, (str(ext["figure"]), fh / fw)),
+            text(M, 1.55 + fig_h, cw, 7.3 - 1.55 - fig_h,
+                 f"**Fleet planner** (priority, deadline, payload, charging and P(success) together): {pl.loc['S4', 'weighted_on_time_pct']:.0f}% of "
+                 f"priority-weighted tasks on time against {pl.loc['S2', 'weighted_on_time_pct']:.0f}% for a first-come queue; "
+                 f"{pl.loc['S4', 'unsafe_per_100_flown']:.2f} unsafe per 100 flown against {pl.loc['S1', 'unsafe_per_100_flown']:.1f} with minutes left.\n"
+                 f"**Where to compute:** the energy-aware choice met {ea['jobs_on_time_pct']:.0f}% of job deadlines at {ea['computing_wh_per_task']:.1f} Wh per task "
+                 f"(always on board: {loc['jobs_on_time_pct']:.0f}% at {loc['computing_wh_per_task']:.1f} Wh). Hovering while waiting, not the radio, is the cost.\n"
+                 f"Simulated schedules on real unseen batteries and missions. " + (f"All {word(met)} criteria, fixed beforehand, were met." if met == len(ext["criteria"]) else f"{word(met).capitalize()} of {word(len(ext['criteria']))} criteria, fixed beforehand, were met."),
+                 size=15, bullets=True, after=6)],
+            "Both are simulations layered on the finished models: arrivals, priorities, deadlines, payload limits, the charging station and all radio and "
+            "computing settings are simulated; batteries and missions are real. The criteria were written in docs/extensions_protocol.md before this run, "
+            "and the run is logged like the final evaluation."))
+
     s.append(slide("What did not hold up", [
         text(M, 1.6, cw, 4.3,
              f"**Mission model on unseen, longer routes:** {bm.loc['unseen routes', 'mape_pct']:.1f}% error against a 5% target (over-predicted, the safe direction).\n"
@@ -306,7 +328,7 @@ def deck() -> list:
         "These weaknesses were found on the test set. Fixing them and re-scoring on the same test set would make the numbers dishonest, so they are reported as they are."))
 
     s.append(slide("Why the numbers can be trusted", [
-        text(M, 1.6, cw, 5.2, "**A locked test set,** chosen before any modelling. Every opening is logged: the evaluation, and one rerun after verification that gave identical numbers.\n"
+        text(M, 1.6, cw, 5.2, "**A locked test set,** chosen before any modelling. Every opening is logged: the evaluation, one rerun after verification that gave identical numbers, and the run of the guide’s extensions.\n"
              "**Success criteria written down first,** so they could not be adjusted after seeing results.\n"
              "**One command rebuilds everything** from the raw data in 30 minutes. A rebuild with empty caches reproduced every result and model file byte for byte.\n"
              f"**{word(f['verification_passes']).capitalize()} verification passes:** headline numbers recomputed with separate code, a search for leakage, and deliberate bugs planted to confirm the tests catch them.\n"

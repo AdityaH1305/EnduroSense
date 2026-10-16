@@ -76,11 +76,12 @@ def short_policy(name: str) -> str:
     return n
 
 
-def policy_bars(table: pd.DataFrame, value: str, title: str, fmt: str = ".1f") -> alt.Chart:
+def policy_bars(table: pd.DataFrame, value: str, title: str, fmt: str = ".1f", highlight: str | None = None) -> alt.Chart:
     """One horizontal bar per policy; EnduroSense in blue, the others grey, values written beside the bars.
-    Every row keeps its label, and the axis leaves room for the value labels."""
-    df = table.assign(rule=table["policy"].map(short_policy),
-                      kind=np.where(table["policy"].str.strip().str.startswith("P3"), "EnduroSense", "other rule"))
+    Every row keeps its label, and the axis leaves room for the value labels. ``highlight`` names the policy
+    to show in blue when it is not one of the P1-P4 rules (e.g. the fleet planner's policies)."""
+    blue = table["policy"].eq(highlight) if highlight else table["policy"].str.strip().str.startswith("P3")
+    df = table.assign(rule=table["policy"].map(short_policy), kind=np.where(blue, "EnduroSense", "other rule"))
     top = float(df[value].max())
     x = alt.X(f"{value}:Q", title=title, scale=alt.Scale(domain=[0, top * 1.18 if top > 0 else 1]))
     y = alt.Y("rule:N", sort=None, title=None, axis=alt.Axis(labelLimit=260, labelOverlap=False, labelFontSize=12))

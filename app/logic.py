@@ -29,6 +29,7 @@ from endurosense.uncertainty import mission as UB
 from endurosense.uncertainty.quantiles import PredictiveDistribution
 
 FINAL = data_path("results") / "final"
+EXTENSIONS = data_path("results") / "extensions"
 STATE_COLUMNS = ["flight", "battery_chain", "time", "t_chain_s", "flight_index", "v", "i", "p", "p_mean_30s", "motors_on",
                  "phase", "e_chain_wh", "e_res_wh", "remaining_wh", "remaining_min", "label_source"]
 
@@ -312,3 +313,17 @@ def headline_facts() -> dict:
         "band_predicted": float(band["mean_predicted"]), "band_succeeded": float(band["observed_success"]),
         "latency_ms": int(np.ceil(t["latency"].loc[t["latency"]["model"] != "Fixed capacity (reference)", "latency_ms"].max())),
     }
+
+
+# ------------------------------------------------------------------ the guide's extensions (Phase 9)
+def extension_results(which: str = "final") -> dict | None:
+    """Tables of the extension studies (simulated schedules on real batteries and missions); None if not run yet."""
+    d = EXTENSIONS / which
+    if not (d / "planner.csv").exists():
+        return None
+    out = {"planner": pd.read_csv(d / "planner.csv"), "computing": pd.read_csv(d / "computing.csv"),
+           "sensitivity": pd.read_csv(d / "computing_sensitivity.csv"), "summary": json.loads((d / "summary.json").read_text()),
+           "figure": d / "figures" / "extensions.png"}
+    if (d / "criteria.csv").exists():
+        out["criteria"] = pd.read_csv(d / "criteria.csv")
+    return out

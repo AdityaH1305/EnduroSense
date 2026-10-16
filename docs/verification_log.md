@@ -179,9 +179,30 @@ The dashboard, the report and the slides. Nothing under `src/` or `scripts/` was
 - **All five pages were inspected in a browser** after the fixes, including the live fleet run.
 - **The code fingerprint is unchanged:** the dashboard and the builders live outside `src/` and `scripts/`.
 
-### Status after pass 6
+### Status after pass 6 (kept as it was)
 
 - `pytest`: **147 passed**.
 - `pyflakes`: clean on `src`, `scripts`, `tests`, `app` and `docs/build`.
 - The code on disk matches the last entry of the test access log.
 
+## Phase 9 checks: the guide's extensions (2026-10-16)
+
+Two new modules (`fleet_planner.py`, `edge.py`), a new script (`10_extensions.py`) and a new settings block. The test set was opened once more, with criteria written first and a stated reason.
+
+| # | Found | Severity | Fix |
+|---|---|---|---|
+| 1 | **"Waiting for a charger" was not comparable between policies:** the planner counted one minute per waiting drone, the first-come queue one minute per queue | Medium (reporting) | Replaced by the minutes in the day in which a swap was wanted and no charged pack was ready; found on development data before the test run |
+| 2 | **A first-come queue could stop forever** behind a task that no drone in the fleet can carry | Medium | Such a task is refused, and the queue moves on; a test checks that light tasks keep flowing |
+| 3 | **Mutation testing: 5 of 12 planted bugs were not caught at first.** The planner ignoring deadlines or priority, the queue blocking on a heavy task, unsafe missions not counted, and the computing choice trading a deadline for energy | Medium (latent) | Four tests added (an overloaded day, an over-optimistic battery model, equal deadlines with different weights, a cheaper but late option); all 12 are now caught |
+
+### Checked and confirmed correct
+
+- **Nothing earlier changed.** All 59 files in `results/final/`, `results/decisions/` and `models/` are byte-identical to before the phase, apart from the access log, which gained exactly one entry.
+- **Reproducible.** A second development run gave byte-identical output files.
+- **The verdicts follow from the tables.** A test recomputes the saved criteria from the saved tables and checks that the opening is in the log with a reason.
+- **The code on disk matches the last log entry** (fingerprint `768c331b14bdc307`). Mutation testing restored every file, and the fingerprint was checked afterwards.
+
+### Status after the Phase 9 checks
+
+- `pytest`: **165 passed**.
+- `pyflakes`: clean on `src`, `scripts`, `tests`, `app` and `docs/build`.

@@ -237,6 +237,10 @@ EnduroSense/
 
 ---
 
+## Phase 9: Extensions requested by the guide (added 2026-10-16)
+
+> **Status: complete (2026-10-16).** See `docs/phase_notes/phase9_extensions.md` and `docs/extensions_protocol.md`. Two simulations on top of the finished models, with real batteries and missions and simulated schedules, chargers and radio settings. (1) An energy-aware fleet planner: priorities, deadlines, payload limits, charging and P(success), matched with the Hungarian algorithm. (2) A choice of where to process a task's data: on board, on an edge server, or on another drone. Built on development data; the criteria were written first; one logged run on the unseen batteries. All three criteria were met. The planner gets 83.8% of priority-weighted work on time against 71.3% for a first-come queue, at 0.61 unsafe missions per 100 (best estimates: 4.46; minutes left: 11.1). The energy-aware choice meets 95.6% of job deadlines at 2.05 Wh per task, against 90.2% at 2.60 Wh on board. No model or earlier result changed.
+
 ## Timeline summary
 
 | Week | Phase | Checkpoint |

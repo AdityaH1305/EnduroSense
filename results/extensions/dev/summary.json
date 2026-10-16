@@ -1,0 +1,81 @@
+{
+ "data": "development batteries and missions (held-out predictions)",
+ "code_fingerprint": "768c331b14bdc307",
+ "batteries": 34,
+ "missions": 331,
+ "hover_power_w": 539.0454831551051,
+ "days": {
+  "planner": 200,
+  "computing": 100
+ },
+ "tau": 0.95,
+ "settings": {
+  "planner": {
+   "day_min": 480,
+   "last_arrival_before_end_min": 60,
+   "tasks_per_day": 100,
+   "days": 200,
+   "two_sortie_share": 0.3,
+   "priorities": {
+    "high": {
+     "share": 0.2,
+     "weight": 3,
+     "deadline_min": 30
+    },
+    "normal": {
+     "share": 0.5,
+     "weight": 2,
+     "deadline_min": 90
+    },
+    "low": {
+     "share": 0.3,
+     "weight": 1,
+     "deadline_min": 240
+    }
+   },
+   "drone_max_payload_g": [
+    750,
+    500,
+    500,
+    250
+   ],
+   "turnaround_min": 3,
+   "swap_min": 2,
+   "batteries_per_drone": 3,
+   "chargers": 2,
+   "charger_w": 100
+  },
+  "computing": {
+   "cpu_w": 15,
+   "tx_w": 1.0,
+   "data_mb": [
+    20,
+    150
+   ],
+   "local_s": [
+    10,
+    60
+   ],
+   "edge_speedup": 8,
+   "on_site_share": 0.5,
+   "job_deadline_s": [
+    30,
+    120
+   ],
+   "bandwidth_mhz": 10,
+   "snr_db_at_100m": 20,
+   "path_loss_exponent": 2.5,
+   "blocked_prob": 0.1,
+   "blocked_rate_factor": 0.1,
+   "edge_busy_prob": 0.3,
+   "edge_wait_s_mean": 30,
+   "plan_for": {
+    "fade": 0.3,
+    "blocked": true,
+    "edge_wait_s": 60
+   },
+   "days": 100
+  }
+ },
+ "simulated": "task arrivals, priorities, deadlines, payload limits, charging station and every computing setting; batteries and missions are recorded"
+}

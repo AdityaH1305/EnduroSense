@@ -1,0 +1,4 @@
+criterion,met,evidence
+"1. The planner gets more priority-weighted work done on time than first come, first served (both with the EnduroSense check)",True,83.8% ± 0.5 against 71.3% ± 0.7; high priority 95% against 62%
+"2. The planner stays safe: at most a tenth of the unsafe missions of the brief's rule, and fewer than the planner with best estimates",True,unsafe per 100 flown: 0.61 against 11.10 (minutes left) and 4.46 (best estimates)
+"3. The energy-aware computing choice meets at least as many job deadlines as the better fixed rule, for no more energy",True,jobs on time 95.6% against 90.2% (always local); computing energy 2.05 against 2.60 Wh per task

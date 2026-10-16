@@ -156,7 +156,7 @@ def test_every_page_runs_and_responds(world):
     at.button[0].click().run()
     assert not at.exception and len(at.dataframe) >= 2
 
-    for page in ("Results", "How it works"):
+    for page in ("Fleet planner (extension)", "Results", "How it works"):
         at.sidebar.radio[0].set_value(page).run()
         assert not at.exception, page
 

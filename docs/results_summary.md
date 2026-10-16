@@ -153,6 +153,30 @@ It tracks reality, but it is **slightly over-confident at the top**: missions ra
 
 On the 30 test flights with both predictions, the correlation of the two errors is +0.43 (interval +0.14 to +0.66), stronger than in development (+0.16). It is still in the safe direction: the real spread of the margin error was 3.37 Wh against 3.77 Wh assumed, and the 90% range of the margin covered all 30 real pairs.
 
+## Extensions requested by the guide (simulated)
+
+Added after the final evaluation (Phase 9; `docs/phase_notes/phase9_extensions.md`). These are **simulated schedules** on the real unseen batteries (8) and missions (85): task arrivals, priorities, deadlines, payload limits, chargers and every radio and computing setting are simulated. The criteria were fixed beforehand in `docs/extensions_protocol.md`; the run is the third entry of the test access log. Nothing in the sections above changed.
+
+| Policy (4 drones, 100 tasks a day, 200 days) | Weighted tasks on time | High priority on time | Unsafe per 100 flown |
+|---|---|---|---|
+| First come, minutes left (the brief) | 67.2% | 53% | 11.10 |
+| First come, EnduroSense check | 71.3% | 62% | 0.62 |
+| Planner, best estimates | 84.3% | 96% | 4.46 |
+| **Planner, EnduroSense** | **83.8%** | **95%** | **0.61** |
+| Planner, oracle | 84.3% | 96% | 0.00 |
+
+| Where to process a task's data | Computing energy per task | Jobs on time |
+|---|---|---|
+| Always on board | 2.60 Wh | 90.2% |
+| Always offload to the edge server | 0.95 Wh | 81.5% (and many on-site jobs refused before take-off) |
+| **Energy-aware choice** | **2.05 Wh** | **95.6%** |
+
+- **All three criteria were met:**
+  - the planner beats first come on priority-weighted on-time work;
+  - it stays safe (at most a tenth of minutes-left's unsafe missions, and fewer than the planner with best estimates);
+  - the energy-aware choice meets more deadlines for less energy.
+- **Hovering while waiting for a result, not the radio, is what costs energy:** about 539 W, measured.
+
 ## What to claim, and what not to
 
 **Supported by the test set**

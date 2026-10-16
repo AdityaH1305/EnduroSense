@@ -6,6 +6,8 @@
 - Final report: `docs/EnduroSense_Final_Report.docx` (9 pages; rebuild with `python docs/build/build_report.py`)
 - Slides: `docs/EnduroSense_Slides.pptx` (13 slides with speaker notes; rebuild with `python docs/build/build_slides.py`, needs Microsoft PowerPoint)
 - Demo walkthrough: `docs/demo_script.md`
+- Project overview for the mentor: `docs/EnduroSense_Project_Overview.docx` (11 pages, plain language, with the decisions that need approval; rebuild with `python docs/build/build_overview.py`)
+- Study guide: `docs/EnduroSense_Study_Guide.pdf` (30 pages: the project top to bottom with nine simple diagrams, then panel questions; source `docs/study_guide.md`, diagrams from `docs/build/study_figures.py`, rebuild with `python docs/build/build_study_guide.py`, needs Microsoft Word)
 
 ## What was built
 

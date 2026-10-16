@@ -17,7 +17,7 @@ from endurosense.mission import MissionSpec
 from endurosense.scheduler import FleetSimulator, batteries_from, compare_policies, task_pool
 
 st.set_page_config(page_title="EnduroSense", layout="wide")
-PAGES = ["Three missions, one battery", "Mission check", "Fleet", "Results", "How it works"]
+PAGES = ["Three missions, one battery", "Mission check", "Fleet", "Fleet planner (extension)", "Results", "How it works"]
 GO, NOGO = ":material/check_circle:", ":material/block:"
 
 
@@ -237,6 +237,58 @@ def page_fleet(tau: float, reveal: bool) -> None:
         st.caption(f"EnduroSense uses the threshold in the sidebar (τ = {tau:.2f}). Fewer days means noisier numbers.")
 
 
+def page_planner(tau: float, reveal: bool) -> None:
+    st.title("Fleet planner (extension)")
+    res, which = L.extension_results("final"), "unseen (test) batteries and missions"
+    if res is None:
+        res, which = L.extension_results("dev"), "development batteries and missions"
+    if res is None:
+        st.info("Not run yet. Build it with `python scripts/10_extensions.py`.", icon=":material/info:")
+        return
+    s = res["summary"]
+    p = s["settings"]["planner"]
+    st.write(f"Two additions requested by the guide, run on {which}. **Simulated:** when tasks arrive, their priorities and deadlines, "
+             "each drone's payload limit, the charging station and every computing setting. **Real:** the batteries (recorded chains with the "
+             "battery model's held-out ranges) and the missions (recorded flights with their measured energy, duration, payload and distance).")
+    if "criteria" in res:
+        c = res["criteria"].assign(result=lambda d: np.where(d["met"], "✔ Met", "✘ Not met"))
+        st.table(c[["criterion", "result", "evidence"]].rename(columns=str.capitalize).set_index("Criterion"))
+
+    st.subheader("1. Who flies which task, and when")
+    st.write(f"{len(p['drone_max_payload_g'])} drones (payload limits {', '.join(f'{g:g} g' for g in p['drone_max_payload_g'])}), "
+             f"{p['tasks_per_day']} tasks in an {p['day_min'] // 60}-hour day, {p['chargers']} chargers at {p['charger_w']} W, "
+             f"{p['batteries_per_drone']} packs per drone, {s['days']['planner']} simulated days. High-priority tasks are due within "
+             f"{p['priorities']['high']['deadline_min']} minutes, normal within {p['priorities']['normal']['deadline_min']}, low within "
+             f"{p['priorities']['low']['deadline_min']}.")
+    t = res["planner"]
+    c1, c2 = st.columns(2)
+    c1.altair_chart(C.policy_bars(t, "weighted_on_time_pct", "priority-weighted tasks done on time (%)", ".0f", highlight=t["policy"][t["code"] == "S4"].iloc[0]),
+                    width="stretch")
+    c2.altair_chart(C.policy_bars(t, "unsafe_per_100_flown", "unsafe missions per 100 flown", ".2f", highlight=t["policy"][t["code"] == "S4"].iloc[0]),
+                    width="stretch")
+    st.caption("First come = a plain queue in arrival order. Planner = all waiting tasks matched to all free drones at once: priority first, "
+               "then the closest deadline, then the battery that fits best; a task that can no longer be finished on time is not started.")
+    with st.expander("Table"):
+        st.dataframe(t[["policy", "weighted_on_time_pct", "high_priority_on_time_pct", "on_time_per_day", "late_per_day", "missed_per_day",
+                        "unsafe_per_100_flown", "swaps_per_day", "pack_shortage_min_per_day", "utilisation_pct"]].round(2), hide_index=True, width="stretch")
+
+    st.subheader("2. Where to process a task's data")
+    st.write(f"Each task carries a computing job (checking images of the site, for example). Process it on board, send it to an edge server at "
+             f"the depot, or hand it to a drone waiting there. If the result is needed on site, the drone hovers while it waits, at about "
+             f"{s['hover_power_w']:.0f} W (measured). The radio and the computer draw only a few watts, so the hover time is what costs energy.")
+    cm = res["computing"].rename(columns={"rule": "Rule", "computing_wh_per_task": "Computing energy per task (Wh)", "jobs_on_time_pct": "Jobs on time (%)",
+                                          "local_pct": "On board (%)", "offload_pct": "Edge server (%)", "hand over_pct": "Other drone (%)",
+                                          "weighted_on_time_pct": "Tasks on time, weighted (%)", "unsafe_per_100_flown": "Unsafe per 100"})
+    st.dataframe(cm[["Rule", "Computing energy per task (Wh)", "Jobs on time (%)", "On board (%)", "Edge server (%)", "Other drone (%)",
+                     "Tasks on time, weighted (%)", "Unsafe per 100"]].round(2), hide_index=True, width="stretch")
+    with st.expander("How the answer changes with link quality and server load"):
+        sw = res["sensitivity"]
+        st.dataframe(sw.pivot_table(index=["snr_db_at_100m", "edge_busy_prob"], columns="rule", values=["computing_wh_per_task", "jobs_on_time_pct"])
+                     .round(2), width="stretch")
+        st.caption("snr_db_at_100m: link quality (signal-to-noise at 100 m, higher is better). edge_busy_prob: chance the edge server is busy.")
+    st.caption("All computing settings are typical published values, not measurements (config.yaml, extensions.computing).")
+
+
 def page_results(tau: float, reveal: bool) -> None:
     t, f = world()["tables"], world()["facts"]
     word = f["number_word"]
@@ -340,7 +392,8 @@ def main() -> None:
     reveal = st.sidebar.toggle("Show what was measured", value=False, help="Reveal the true energy afterwards measured for each battery and flight.")
     st.sidebar.divider()
     st.sidebar.caption("Batteries and flights shown here are from the locked test set: unseen by every model.")
-    {PAGES[0]: page_three, PAGES[1]: page_check, PAGES[2]: page_fleet, PAGES[3]: page_results, PAGES[4]: page_how}[page](tau, reveal)
+    {PAGES[0]: page_three, PAGES[1]: page_check, PAGES[2]: page_fleet, PAGES[3]: page_planner, PAGES[4]: page_results,
+     PAGES[5]: page_how}[page](tau, reveal)
 
 
 main()

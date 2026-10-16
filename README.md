@@ -45,11 +45,13 @@ python scripts/06_model_b.py        # Phase 4 Model B: components, missions, gen
 python scripts/07_uncertainty.py    # Phase 5 calibrated ranges for both models (~6 min, ~1 min cached) -> results/uncertainty/, models/*/*_calibrated.*
 python scripts/08_decisions.py      # Phase 6 P(success), what-if policy comparison, fleet simulation (~1 min) -> results/decisions/
 python scripts/09_final_test.py --final   # Phase 7 final evaluation on the locked test set -> results/final/
+python scripts/10_extensions.py          # Phase 9 guide's extensions (simulated fleet planner, edge computing), development data (~20 min) -> results/extensions/dev/
+python scripts/10_extensions.py --final  # the same on the unseen batteries (logged; its criteria are in docs/extensions_protocol.md) -> results/extensions/final/
 ```
 
-`python scripts/run_all.py` runs steps 01-08 in order (about 28 minutes from scratch on mains power with a GPU, less with caches); add `--final` to include step 09.
+`python scripts/run_all.py` runs steps 01-08 in order (step 10 is run on its own) (about 28 minutes from scratch on mains power with a GPU, less with caches); add `--final` to include step 09.
 
-Test data is locked: `endurosense.data.split.select(df, "test")` raises unless `final=True`. Only `09_final_test.py --final` reads it. Every opening is logged in `results/final/test_access_log.json`; if code or settings changed since the last opening, the script asks for a `--reason`. `09_final_test.py --rehearsal` runs the same code on development rows without opening anything.
+Test data is locked: `endurosense.data.split.select(df, "test")` raises unless `final=True`. Only `09_final_test.py --final` and `10_extensions.py --final` read it. Every opening is logged in `results/final/test_access_log.json`; if code or settings changed since the last opening, the script asks for a `--reason`. `09_final_test.py --rehearsal` runs the same code on development rows without opening anything.
 
 ## Dashboard, report and slides
 
@@ -57,9 +59,11 @@ Test data is locked: `endurosense.data.split.select(df, "test")` raises unless `
 streamlit run app/streamlit_app.py        # the dashboard (loads saved models and final results; trains nothing)
 python docs/build/build_report.py         # rebuilds docs/EnduroSense_Final_Report.docx from the result files
 python docs/build/build_slides.py         # rebuilds docs/EnduroSense_Slides.pptx (needs Microsoft PowerPoint)
+python docs/build/build_overview.py       # rebuilds docs/EnduroSense_Project_Overview.docx (plain-language overview for review)
+python docs/build/build_study_guide.py    # rebuilds docs/EnduroSense_Study_Guide.pdf from docs/study_guide.md, with its diagrams (needs Microsoft Word)
 ```
 
-Run all three from the project folder. The dashboard needs the outputs of `python scripts/run_all.py --final`; if any are missing it says which. A walkthrough for presenting it is in [docs/demo_script.md](docs/demo_script.md).
+Run them from the project folder. The dashboard needs the outputs of `python scripts/run_all.py --final`; if any are missing it says which. A walkthrough for presenting it is in [docs/demo_script.md](docs/demo_script.md).
 
 ## Results
 
@@ -70,6 +74,8 @@ The final results on the test set, including what did not hold up, are in [docs/
 | Energy available (Model A), error on unseen batteries | 2.19 Wh, against 2.90 Wh for the best non-ML baseline |
 | Energy required (Model B), error on unseen flights | 3.1% (2.6% on the trained route, 5.7% on unseen routes) |
 | Unsafe approvals: minutes-left rule / EnduroSense | 12.4% / 0.61% (0.00% at take-off decisions) |
+
+**Extensions requested by the guide** (simulated schedules on the real unseen batteries and missions; `docs/phase_notes/phase9_extensions.md`): an energy-aware fleet planner (priorities, deadlines, payload, charging and P(success) together) and a choice of where to process a task's data (on board, edge server or another drone). All three pre-set criteria were met.
 
 ## Layout
 
@@ -87,6 +93,8 @@ src/endurosense/     the Python package
   feasibility.py     P(success) = P(energy available >= energy required) and the go / no-go rule
   whatif.py          real battery states x real missions: policies P1-P4, trade-off curves, reliability of P(success)
   scheduler.py       fleet simulation on real battery chains
+  fleet_planner.py   extension: energy-aware fleet planner (priorities, deadlines, payload, charging), simulated days
+  edge.py            extension: process a task's data on board, on an edge server or on another drone
   decision_plots.py  figures of the decision evaluation (shared by development and test runs)
   access.py          log of every opening of the locked test set
   plots.py           shared figure style

@@ -167,6 +167,49 @@ pct = lambda x, d=1: f"{100 * x:.{d}f}%"
 
 
 # ------------------------------------------------------------------ the report
+def extensions_section(r, ext: dict, tau: float) -> None:
+    """Section 6: the guide's two extensions, run once on the unseen batteries after their criteria were fixed."""
+    pl, cm, sm = ext["planner"].set_index("code"), ext["computing"].set_index("rule"), ext["summary"]
+    cfg = sm["settings"]["planner"]
+    r.h("6. Extensions requested by the guide (simulated)")
+    r.p(f"Two additions were built after the final evaluation, on top of the finished models: an energy-aware fleet planner and a choice of where "
+        f"to process a task's data. Both are **simulations**. The batteries ({sm['batteries']} unseen batteries with the battery model's saved ranges) and the "
+        f"missions (recorded flights with measured energy, duration, payload and distance) are real; task arrivals, priorities, deadlines, payload "
+        "limits, the charging station and every computing setting are simulated. Their success criteria were written down before this run "
+        "(docs/extensions_protocol.md), and the run is logged like the final evaluation. No model or earlier result changed.")
+    r.h("6.1 Energy-aware fleet planner", 2)
+    pr = cfg["priorities"]
+    r.p(f"{len(cfg['drone_max_payload_g'])} drones with different payload limits work through {cfg['tasks_per_day']} tasks in an "
+        f"{cfg['day_min'] // 60}-hour day, for {sm['days']['planner']} simulated days. High-priority tasks are due within {pr['high']['deadline_min']} minutes, "
+        f"normal ones within {pr['normal']['deadline_min']} and low ones within {pr['low']['deadline_min']}. Packs are swapped at the depot and recharged on "
+        f"{cfg['chargers']} chargers at {cfg['charger_w']} W. The planner matches all waiting tasks to all free drones at once: a pair is allowed only if the drone "
+        f"can carry the payload, the task can be finished before its deadline and P(success) ≥ {tau}; priority comes first, then the closest deadline, "
+        "then the battery that fits best.")
+    rows = [[pl.loc[k, "policy"], f"{pl.loc[k, 'weighted_on_time_pct']:.1f}%", f"{pl.loc[k, 'high_priority_on_time_pct']:.0f}%",
+             f"{pl.loc[k, 'unsafe_per_100_flown']:.2f}", f"{pl.loc[k, 'swaps_per_day']:.1f}"] for k in ("S1", "S2", "S3", "S4", "S5")]
+    r.table(["Policy", "Weighted tasks on time", "High priority on time", "Unsafe per 100 flown", "Swaps per day"], rows, [5.6, 2.8, 2.8, 2.6, 2.4],
+            caption="Fleet planner on unseen batteries (simulated days).", bold_rows=(3,))
+    r.h("6.2 Where to process a task's data", 2)
+    c = sm["settings"]["computing"]
+    r.p(f"Each task carries a computing job. It can be processed on board, sent to an edge server at the depot, or handed to a drone waiting there. "
+        f"If the result is needed on site ({c['on_site_share']:.0%} of jobs) the drone hovers while it waits, at about {sm['hover_power_w']:.0f} W, measured on "
+        f"development flights; the radio ({c['tx_w']:g} W) and the computer ({c['cpu_w']:g} W) cost little by comparison. The energy-aware rule measures the "
+        "link and asks the server's queue on site, then takes the option with the least energy that meets the job's deadline. Before take-off, P(success) "
+        "includes the energy the job would need in a bad case (weak, blocked link and a busy server).")
+    names = {"local": "Always on board", "offload": "Always offload", "energy-aware": "Energy-aware"}
+    rows = [[names[k], f"{cm.loc[k, 'computing_wh_per_task']:.2f}", f"{cm.loc[k, 'jobs_on_time_pct']:.1f}%",
+             f"{cm.loc[k, 'local_pct']:.0f} / {cm.loc[k, 'offload_pct']:.0f} / {cm.loc[k, 'hand over_pct']:.0f}",
+             f"{cm.loc[k, 'weighted_on_time_pct']:.1f}%"] for k in ("local", "offload", "energy-aware")]
+    r.table(["Rule", "Computing energy per task (Wh)", "Jobs on time", "On board / edge / other drone (%)", "Weighted tasks on time"], rows,
+            [3.2, 3.4, 2.4, 4.0, 3.2], caption="Where to process the data, with the EnduroSense planner.", bold_rows=(2,))
+    r.p("“Always offload” uses little energy per flown task only because the planner refuses many on-site jobs before take-off: in a bad case the drone would "
+        "hover for minutes. All computing settings are typical published values, not measurements; a sweep over link quality and server load is in "
+        "results/extensions/final/computing_sensitivity.csv.")
+    r.h("6.3 Criteria", 2)
+    r.bullets([f"**{'Met' if m else 'Not met'}.** {crit} ({ev})." for crit, m, ev in ext["criteria"][["criterion", "met", "evidence"]].itertuples(index=False)])
+    r.figure(ext["figure"], "The extensions on unseen batteries (simulated schedules).", 16.0)
+
+
 def build(out=OUT) -> None:
     n, r, f = numbers(), Report(), L.headline_facts()
     word = f["number_word"]
@@ -293,6 +336,7 @@ def build(out=OUT) -> None:
     log = n["log"]
     r.p(f"The test set was opened on {log[0]['opened_at'][:10]}. Every opening is logged with a fingerprint of the code and settings; "
         + ("the evaluation was rerun once after a verification pass changed reporting code only, with identical numbers. " if len(log) > 1 else "")
+        + ("A later opening ran the guide's extensions (section 6) and changed none of the results in this section. " if len(log) > 2 else "")
         + f"11 of the 16 test chains carry an energy label and are used for Model A ({n['summary']['model_a']['readings']:,} readings); "
         "all 40 flights are used for Model B.")
     r.h("5.1 Energy available", 2)
@@ -365,8 +409,13 @@ def build(out=OUT) -> None:
         "same trade-off: slightly more unsafe missions, fewer swaps.")
     r.figure(FIN / "figures" / "fleet_simulation.png", "Fleet simulation on unseen batteries.", 16.0)
 
-    # ---- 6 what held, what did not
-    r.h("6. What held up and what did not")
+    # ---- 6 extensions
+    ext = L.extension_results("final")
+    if ext is not None:
+        extensions_section(r, ext, tau)
+
+    # ---- 7 what held, what did not
+    r.h("7. What held up and what did not")
     r.h("Supported by the test set", 2)
     takeoff = "to zero" if f["unsafe_p3_takeoff"] == 0 else f"to {pct(f['unsafe_p3_takeoff'], 2)}"
     r.bullets([f"A calibrated GRU ensemble estimates energy to reserve to about {f['a_main']:.1f} Wh on unseen batteries "
@@ -383,8 +432,8 @@ def build(out=OUT) -> None:
                "That a single GRU beats the baseline."])
     r.p("These weaknesses were reported, not patched. Fixing them and scoring again on the same test set would make the test results optimistic.")
 
-    # ---- 7 limitations
-    r.h("7. Limitations")
+    # ---- 8 limitations
+    r.h("8. Limitations")
     r.bullets([f"**Small test set.** {f['labelled_batteries']} labelled batteries and {f['test_flights']} flights from one drone and one battery type. "
                "Every interval is wide for that reason.",
                "**The truth itself has error.** The energy-to-reserve label comes from rest voltages and is uncertain by about 1.5–2 Wh.",
@@ -393,29 +442,30 @@ def build(out=OUT) -> None:
                "**Conditions outside the data** (other airframes, temperatures, battery ages, stronger wind) are untested. The mission model warns when "
                "a mission is outside the ranges it was tested on."])
 
-    # ---- 8 reproducibility
-    r.h("8. Reproducibility and verification")
+    # ---- 9 reproducibility
+    r.h("9. Reproducibility and verification")
     r.bullets(["**One command rebuilds everything** from the raw files: `python scripts/run_all.py --final` (about 30 minutes). A full rebuild with empty "
                "caches reproduced all 74 result files and all 19 model files byte for byte.",
-               "**The test set is gated and logged.** Test data can only be read by the final-evaluation script; every opening is recorded, and a rerun "
+               "**The test set is gated and logged.** Test data can only be read by the final-evaluation script and the extensions run; every opening is recorded, and a rerun "
                "on changed code needs a stated reason.",
                f"**{word(f['verification_passes']).capitalize()} verification passes** re-checked finished phases adversarially: independent recomputation of headline numbers, a search for "
                "leakage, and mutation testing (deliberately breaking the code to confirm that a test fails). What each pass found and fixed is in "
                "docs/verification_log.md.",
                "**Tests:** the automated test suite covers the data pipeline, both models, calibration, decisions, the final script and the dashboard."])
 
-    # ---- 9 demo
-    r.h("9. The dashboard")
+    # ---- 10 demo
+    r.h("10. The dashboard")
     r.p("A Streamlit dashboard (`streamlit run app/streamlit_app.py`) loads the saved models and the final results; nothing is trained in it.")
     r.bullets(["**Three missions, one battery:** one unseen battery before take-off and three recorded missions that the minutes-left rule approves; "
                "EnduroSense refuses the one that would have cut into the reserve.",
                "**Mission check:** pick any unseen battery and moment, plan a mission or choose a recorded one, and see both ranges, P(success), "
                "the decision of each rule and what was measured afterwards.",
                "**Fleet:** the fleet simulation, with adjustable fleet size, workload and threshold.",
+               "**Fleet planner (extension):** the guide's extensions of section 6, read from their result files.",
                "**Results:** the tables and charts of this report, read from the same result files."])
 
-    # ---- 10 next
-    r.h("10. Next steps")
+    # ---- 11 next
+    r.h("11. Next steps")
     r.bullets(["**More batteries and routes.** The main limit is data: a second battery type, longer routes and more flights at 100 m would address "
                "the two missed criteria directly.",
                "**Learn each battery.** The error is a per-battery offset, so a model that updates its estimate of a battery’s capacity after each "
