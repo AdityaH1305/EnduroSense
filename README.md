@@ -60,7 +60,7 @@ streamlit run app/streamlit_app.py        # the dashboard (loads saved models an
 python docs/build/build_report.py         # rebuilds docs/EnduroSense_Final_Report.docx from the result files
 python docs/build/build_slides.py         # rebuilds docs/EnduroSense_Slides.pptx (needs Microsoft PowerPoint)
 python docs/build/build_overview.py       # rebuilds docs/EnduroSense_Project_Overview.docx (plain-language overview for review)
-python docs/build/build_study_guide.py    # rebuilds docs/EnduroSense_Study_Guide.pdf from docs/study_guide.md, with its diagrams (needs Microsoft Word)
+python docs/build/build_study_guide.py    # rebuilds the presentation guide (docs/EnduroSense_Study_Guide.pdf, from docs/study_guide.md) and the full guide (..._Full.pdf, from docs/study_guide_full.md); needs Microsoft Word
 ```
 
 Run them from the project folder. The dashboard needs the outputs of `python scripts/run_all.py --final`; if any are missing it says which. A walkthrough for presenting it is in [docs/demo_script.md](docs/demo_script.md).

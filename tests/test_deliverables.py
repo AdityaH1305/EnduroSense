@@ -106,9 +106,10 @@ def test_study_guide_builds_with_its_diagrams_and_worked_numbers(tmp_path):
     from docx import Document
     guide, figs = load("build_study_guide.py"), load("study_figures.py")
     out = tmp_path / "guide.docx"
-    guide.build_docx(out)
+    full = guide.GUIDES["full"][0]                                                  # the full guide carries every diagram and worked example
+    guide.build_docx(out, full)
     doc = Document(str(out))
-    source = guide.SOURCE.read_text(encoding="utf-8")
+    source = full.read_text(encoding="utf-8")
     names = re.findall(r"^!\[.+\]\((\w+)\)$", source, flags=re.M)
     assert len(names) == len(set(names)) == 9 and len(doc.inline_shapes) == 9     # every diagram is placed once
     text = "\n".join(p.text for p in doc.paragraphs)
@@ -133,3 +134,18 @@ def test_extension_verdicts_follow_from_their_tables_and_the_run_is_logged():
     log = json.loads((FINAL / "test_access_log.json").read_text())
     assert any(e["fingerprint"] == ext["summary"]["code_fingerprint"] and e["reason"] for e in log)   # the opening was logged, with a reason
     assert ext["summary"]["data"].startswith("unseen")
+
+
+def test_presentation_guide_is_short_and_quotes_the_results(tmp_path):
+    from docx import Document
+    guide = load("build_study_guide.py")
+    out = tmp_path / "short.docx"
+    guide.build_docx(out)
+    doc = Document(str(out))
+    source = guide.SOURCE.read_text(encoding="utf-8")
+    assert len(doc.inline_shapes) == len(re.findall(r"^!\[.+\]\(\w+\)$", source, flags=re.M)) == 5
+    text = "\n".join(p.text for p in doc.paragraphs) + "\n" + "\n".join(c.text for t in doc.tables for row in t.rows for c in row.cells)
+    f = L.headline_facts()
+    for expected in (f"{100 * f['unsafe_p1']:.1f}%", f"{100 * f['unsafe_p3']:.2f}%", f"{f['a_main']:.2f} Wh", f"{f['b_unseen']:.1f}%", f"{f['a_lookup']:.2f}"):
+        assert expected in text, expected
+    assert "**" not in text and "![" not in text

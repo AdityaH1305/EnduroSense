@@ -1,6 +1,7 @@
 """Turn docs/study_guide.md into a PDF.
 
-Usage: python docs/build/build_study_guide.py        -> docs/EnduroSense_Study_Guide.pdf
+Usage: python docs/build/build_study_guide.py        -> docs/EnduroSense_Study_Guide.pdf       (the presentation guide)
+                                                     -> docs/EnduroSense_Study_Guide_Full.pdf  (everything, in detail)
 
 The Markdown is laid out as a Word document (headings, lists, tables, quotes, diagrams) and
 Word exports the PDF, so Microsoft Word on Windows is needed. Edit the .md file, not the PDF.
@@ -22,6 +23,8 @@ from endurosense.config import ROOT
 BUILD = ROOT / "docs" / "build"
 SOURCE = ROOT / "docs" / "study_guide.md"
 OUT = ROOT / "docs" / "EnduroSense_Study_Guide.pdf"
+GUIDES = {"short": (SOURCE, OUT),
+          "full": (ROOT / "docs" / "study_guide_full.md", ROOT / "docs" / "EnduroSense_Study_Guide_Full.pdf")}
 WIDTH_CM = 16.4
 FIGURE_CM = 16.4
 INLINE = re.compile(r"(\*\*.+?\*\*|`[^`]+`|\*[^*\s][^*]*\*)")
@@ -114,13 +117,13 @@ def add_table(doc, rep, lines: list[str]) -> None:
     doc.add_paragraph().paragraph_format.space_after = Pt(2)
 
 
-def build_docx(path) -> None:
+def build_docx(path, source=SOURCE) -> None:
     rep = load("build_report")
     figs = load("study_figures").figures()
     r = rep.Report()
     doc = r.doc
     add_page_number(doc.sections[0], rep.MUTED)
-    lines = SOURCE.read_text(encoding="utf-8").splitlines()
+    lines = source.read_text(encoding="utf-8").splitlines()
     i = 0
     while i < len(lines):
         ln = lines[i]
@@ -186,15 +189,16 @@ def build_docx(path) -> None:
 
 
 def main() -> None:
-    docx = BUILD / "_preview" / "study_guide.docx"
-    build_docx(docx)
-    script = ("$w = New-Object -ComObject Word.Application; $w.Visible = $false; "
-              f"$d = $w.Documents.Open('{docx}', $false, $true); $d.SaveAs([ref]'{OUT}', [ref]17); "
-              "$pages = $d.ComputeStatistics(2); $d.Close($false); $w.Quit(); \"pages: $pages\"")
-    res = subprocess.run(["powershell", "-NoProfile", "-Command", script], capture_output=True, text=True)
-    if res.returncode != 0 or not OUT.exists():
-        sys.exit(res.stderr or "Word could not export the PDF")
-    print(f"wrote {OUT} ({res.stdout.strip()})")
+    for name, (source, out) in GUIDES.items():
+        docx = BUILD / "_preview" / f"study_guide_{name}.docx"
+        build_docx(docx, source)
+        script = ("$w = New-Object -ComObject Word.Application; $w.Visible = $false; "
+                  f"$d = $w.Documents.Open('{docx}', $false, $true); $d.SaveAs([ref]'{out}', [ref]17); "
+                  "$pages = $d.ComputeStatistics(2); $d.Close($false); $w.Quit(); \"pages: $pages\"")
+        res = subprocess.run(["powershell", "-NoProfile", "-Command", script], capture_output=True, text=True)
+        if res.returncode != 0 or not out.exists():
+            sys.exit(res.stderr or "Word could not export the PDF")
+        print(f"wrote {out} ({res.stdout.strip()})")
 
 
 if __name__ == "__main__":

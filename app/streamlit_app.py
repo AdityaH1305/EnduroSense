@@ -5,9 +5,14 @@ Run:  streamlit run app/streamlit_app.py
 Nothing is trained here. The dashboard loads the saved models and the final
 results, and shows decisions for batteries and flights the models never saw.
 """
+import sys
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import streamlit as st
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))   # hosted copies run without `pip install -e .`
 
 import charts as C
 import logic as L
